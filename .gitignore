@@ -1,0 +1,16 @@
+# Go
+bin/
+dist/
+*.test
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Env
+.env
+
+# OS
+.DS_Store
+.cursor/
+.claude/
