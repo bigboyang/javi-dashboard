@@ -60,6 +60,12 @@ func main() {
 		// Phase 4: Service Topology
 		// GET /api/v1/topology  — service dependency graph derived from trace spans
 		r.Get("/topology", handler.GetTopology)
+
+		// Phase 5: Custom Metrics
+		// GET /api/v1/metrics/names   — list metric instruments with optional service filter
+		// GET /api/v1/metrics/series  — time-series for a specific metric
+		r.Get("/metrics/names", handler.GetMetricNames)
+		r.Get("/metrics/series", handler.GetMetricSeries)
 	})
 
 	port := os.Getenv("SERVER_PORT")

@@ -1,4 +1,4 @@
-import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse } from '../types/apm'
+import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse } from '../types/apm'
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -52,4 +52,21 @@ export function fetchLogs(
 
 export function fetchTopology(window: string): Promise<TopologyResponse> {
   return apiFetch<TopologyResponse>(`/api/v1/topology?window=${encodeURIComponent(window)}`)
+}
+
+export function fetchMetricNames(window: string, service?: string): Promise<MetricNamesResponse> {
+  const params = new URLSearchParams({ window })
+  if (service) params.set('service', service)
+  return apiFetch<MetricNamesResponse>(`/api/v1/metrics/names?${params}`)
+}
+
+export function fetchMetricSeries(
+  metric: string,
+  window: string,
+  step: string,
+  service?: string,
+): Promise<MetricSeriesResponse> {
+  const params = new URLSearchParams({ metric, window, step })
+  if (service) params.set('service', service)
+  return apiFetch<MetricSeriesResponse>(`/api/v1/metrics/series?${params}`)
 }

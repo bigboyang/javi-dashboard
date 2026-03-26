@@ -195,3 +195,75 @@ func TestGetTopology_ContentTypeIsJSON(t *testing.T) {
 		t.Errorf("Content-Type=%q, want application/json", ct)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// GetMetricNames — parameter validation
+// ---------------------------------------------------------------------------
+
+func TestGetMetricNames_InvalidWindow(t *testing.T) {
+	rec := callHandler(GetMetricNames, "GET", "/api/v1/metrics/names?window=bad")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+	e := decodeError(t, rec)
+	if e.Error == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestGetMetricNames_ContentTypeIsJSON(t *testing.T) {
+	rec := callHandler(GetMetricNames, "GET", "/api/v1/metrics/names?window=bad")
+	ct := rec.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type=%q, want application/json", ct)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetMetricSeries — parameter validation
+// ---------------------------------------------------------------------------
+
+func TestGetMetricSeries_MissingMetric(t *testing.T) {
+	rec := callHandler(GetMetricSeries, "GET", "/api/v1/metrics/series?window=5m")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+	e := decodeError(t, rec)
+	if e.Error == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestGetMetricSeries_InvalidWindow(t *testing.T) {
+	rec := callHandler(GetMetricSeries, "GET", "/api/v1/metrics/series?metric=foo&window=bad")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetMetricSeries_InvalidStep(t *testing.T) {
+	rec := callHandler(GetMetricSeries, "GET", "/api/v1/metrics/series?metric=foo&window=5m&step=bad")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+	e := decodeError(t, rec)
+	if e.Error == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestGetMetricSeries_StepEqualToWindow(t *testing.T) {
+	// step=5m, window=5m — step must be < window
+	rec := callHandler(GetMetricSeries, "GET", "/api/v1/metrics/series?metric=foo&window=5m&step=5m")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetMetricSeries_ContentTypeIsJSON(t *testing.T) {
+	rec := callHandler(GetMetricSeries, "GET", "/api/v1/metrics/series?window=bad")
+	ct := rec.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type=%q, want application/json", ct)
+	}
+}

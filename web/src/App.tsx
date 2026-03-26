@@ -7,6 +7,7 @@ import { ServiceDetail } from './components/ServiceDetail'
 import { TraceExplorer } from './components/TraceExplorer'
 import { LogExplorer } from './components/LogExplorer'
 import { TopologyExplorer } from './components/TopologyExplorer'
+import { MetricsExplorer } from './components/MetricsExplorer'
 import { fetchServices } from './api/apm'
 import type { TimeWindow } from './types/apm'
 
@@ -110,6 +111,10 @@ function App() {
 
       {page === 'topology' && (
         <TopologyExplorer />
+      )}
+
+      {page === 'metrics' && (
+        <MetricsExplorer services={serviceNames} />
       )}
     </AppShell>
   )

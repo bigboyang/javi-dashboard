@@ -203,3 +203,40 @@ type TopologyResponse struct {
 	Edges  []TopologyEdge `json:"edges"`
 	Window string         `json:"window"`
 }
+
+// MetricName carries a summary of a single metric instrument within a window.
+type MetricName struct {
+	Name        string  `json:"name"`
+	MetricType  string  `json:"metric_type"`
+	ServiceName string  `json:"service_name"`
+	DataPoints  uint64  `json:"data_points"`
+	LastValue   float64 `json:"last_value"`
+	MinValue    float64 `json:"min_value"`
+	MaxValue    float64 `json:"max_value"`
+}
+
+// MetricNamesResponse is the top-level envelope for GET /api/v1/metrics/names.
+type MetricNamesResponse struct {
+	Metrics []MetricName `json:"metrics"`
+	Window  string       `json:"window"`
+	Service string       `json:"service"`
+}
+
+// MetricPoint holds aggregated statistics for one time bucket in a series.
+type MetricPoint struct {
+	Ts    time.Time `json:"ts"`
+	Min   float64   `json:"min"`
+	Max   float64   `json:"max"`
+	Avg   float64   `json:"avg"`
+	Count uint64    `json:"count"`
+}
+
+// MetricSeriesResponse is the top-level envelope for GET /api/v1/metrics/series.
+type MetricSeriesResponse struct {
+	MetricName string        `json:"metric_name"`
+	MetricType string        `json:"metric_type"`
+	Service    string        `json:"service"`
+	Window     string        `json:"window"`
+	Step       string        `json:"step"`
+	Series     []MetricPoint `json:"series"`
+}

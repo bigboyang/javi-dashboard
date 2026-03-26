@@ -113,3 +113,36 @@ export interface TopologyResponse {
   edges: TopologyEdge[]
   window: string
 }
+
+export interface MetricName {
+  name: string
+  metric_type: string   // "gauge" | "sum" | "histogram"
+  service_name: string
+  data_points: number
+  last_value: number
+  min_value: number
+  max_value: number
+}
+
+export interface MetricNamesResponse {
+  metrics: MetricName[]
+  window: string
+  service: string
+}
+
+export interface MetricPoint {
+  ts: string
+  min: number
+  max: number
+  avg: number
+  count: number
+}
+
+export interface MetricSeriesResponse {
+  metric_name: string
+  metric_type: string
+  service: string
+  window: string
+  step: string
+  series: MetricPoint[]
+}

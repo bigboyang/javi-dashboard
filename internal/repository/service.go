@@ -663,6 +663,187 @@ ORDER BY call_count DESC
 	return nodes, edges, nil
 }
 
+// -----------------------------------------------------------------------
+// ListMetricNames
+// -----------------------------------------------------------------------
+
+// metricNameRow is an intermediate scan target for the metric names query.
+type metricNameRow struct {
+	MetricName  string
+	MetricType  string
+	ServiceName string
+	DataPoints  uint64
+	LastValue   float64
+	MinValue    float64
+	MaxValue    float64
+}
+
+// ListMetricNames returns a summary of all metric instruments recorded within
+// the requested window, optionally filtered to a single service.
+func ListMetricNames(
+	ctx context.Context,
+	service string,
+	window time.Duration,
+) ([]model.MetricName, error) {
+	windowSec := windowSeconds(window)
+
+	whereExtra := ""
+	args := []any{windowSec}
+
+	if service != "" {
+		whereExtra = " AND service_name = ?"
+		args = append(args, service)
+	}
+
+	query := `
+SELECT
+    metric_name,
+    any(metric_type)                                   AS metric_type,
+    any(service_name)                                  AS service_name,
+    count()                                            AS data_points,
+    anyLast(value)                                     AS last_value,
+    min(value)                                         AS min_value,
+    max(value)                                         AS max_value
+FROM apm.metrics
+WHERE fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
+		whereExtra + `
+GROUP BY metric_name
+ORDER BY metric_name ASC
+`
+	rows, err := ch.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list metric names query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.MetricName
+	for rows.Next() {
+		var r metricNameRow
+		if err := rows.Scan(
+			&r.MetricName,
+			&r.MetricType,
+			&r.ServiceName,
+			&r.DataPoints,
+			&r.LastValue,
+			&r.MinValue,
+			&r.MaxValue,
+		); err != nil {
+			return nil, fmt.Errorf("list metric names scan: %w", err)
+		}
+		results = append(results, model.MetricName{
+			Name:        r.MetricName,
+			MetricType:  r.MetricType,
+			ServiceName: r.ServiceName,
+			DataPoints:  r.DataPoints,
+			LastValue:   r.LastValue,
+			MinValue:    r.MinValue,
+			MaxValue:    r.MaxValue,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list metric names rows: %w", err)
+	}
+	return results, nil
+}
+
+// -----------------------------------------------------------------------
+// GetMetricSeries
+// -----------------------------------------------------------------------
+
+// metricSeriesRow is an intermediate scan target for the metric time-series query.
+type metricSeriesRow struct {
+	Ts    time.Time
+	Min   float64
+	Max   float64
+	Avg   float64
+	Count uint64
+}
+
+// GetMetricSeries returns time-bucketed aggregated values for a single metric
+// instrument, optionally scoped to a service. Gaps in the series are zero-filled.
+func GetMetricSeries(
+	ctx context.Context,
+	metricName string,
+	service string,
+	window time.Duration,
+	step time.Duration,
+) ([]model.MetricPoint, string, error) {
+	windowSec := windowSeconds(window)
+	stepSec := stepSeconds(step)
+
+	whereExtra := ""
+	args := []any{stepSec, metricName, windowSec}
+
+	if service != "" {
+		whereExtra = " AND service_name = ?"
+		args = append(args, service)
+	}
+
+	// Also fetch metric_type for the response envelope.
+	typeQuery := `SELECT any(metric_type) FROM apm.metrics WHERE metric_name = ? LIMIT 1`
+	typeRows, err := ch.DB.Query(ctx, typeQuery, metricName)
+	if err != nil {
+		return nil, "", fmt.Errorf("metric type query: %w", err)
+	}
+	defer typeRows.Close()
+	metricType := ""
+	if typeRows.Next() {
+		_ = typeRows.Scan(&metricType)
+	}
+	_ = typeRows.Err()
+
+	query := `
+SELECT
+    toStartOfInterval(fromUnixTimestamp64Nano(timestamp_nano), INTERVAL ? SECOND) AS ts,
+    min(value)   AS min_val,
+    max(value)   AS max_val,
+    avg(value)   AS avg_val,
+    count()      AS cnt
+FROM apm.metrics
+WHERE metric_name = ?
+  AND fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
+		whereExtra + `
+GROUP BY ts
+ORDER BY ts ASC
+`
+	rows, err := ch.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, metricType, fmt.Errorf("metric series query: %w", err)
+	}
+	defer rows.Close()
+
+	buckets := make(map[time.Time]model.MetricPoint)
+	for rows.Next() {
+		var r metricSeriesRow
+		if err := rows.Scan(&r.Ts, &r.Min, &r.Max, &r.Avg, &r.Count); err != nil {
+			return nil, metricType, fmt.Errorf("metric series scan: %w", err)
+		}
+		buckets[r.Ts] = model.MetricPoint{
+			Ts:    r.Ts.UTC(),
+			Min:   r.Min,
+			Max:   r.Max,
+			Avg:   r.Avg,
+			Count: r.Count,
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, metricType, fmt.Errorf("metric series rows: %w", err)
+	}
+
+	seriesLen := int(window / step)
+	series := make([]model.MetricPoint, 0, seriesLen)
+	now := time.Now().UTC()
+	seriesStart := now.Add(-window).Truncate(step)
+	for t := seriesStart; !t.After(now.Truncate(step)); t = t.Add(step) {
+		if p, ok := buckets[t]; ok {
+			series = append(series, p)
+		} else {
+			series = append(series, model.MetricPoint{Ts: t})
+		}
+	}
+	return series, metricType, nil
+}
+
 // GetTraceSpans returns all spans for a given trace ID ordered by start time.
 // It includes HTTP semantic convention fields and the full span attribute map
 // so the frontend can render a waterfall timeline and attribute details.

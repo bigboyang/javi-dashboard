@@ -347,6 +347,105 @@ func GetTopology(w http.ResponseWriter, r *http.Request) {
 }
 
 // -----------------------------------------------------------------------
+// GetMetricNames — GET /api/v1/metrics/names
+// -----------------------------------------------------------------------
+
+// GetMetricNames handles GET /api/v1/metrics/names.
+// Query params:
+//
+//	?window=5m|15m|1h|6h|24h  (default: 5m)
+//	?service=<name>             (optional; omit for all services)
+func GetMetricNames(w http.ResponseWriter, r *http.Request) {
+	wp, dur, ok := windowFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	service := r.URL.Query().Get("service")
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	metrics, err := repository.ListMetricNames(ctx, service, dur)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query metric names")
+		return
+	}
+	if metrics == nil {
+		metrics = []model.MetricName{}
+	}
+
+	writeJSON(w, http.StatusOK, model.MetricNamesResponse{
+		Metrics: metrics,
+		Window:  string(wp),
+		Service: service,
+	})
+}
+
+// -----------------------------------------------------------------------
+// GetMetricSeries — GET /api/v1/metrics/series
+// -----------------------------------------------------------------------
+
+// GetMetricSeries handles GET /api/v1/metrics/series.
+// Query params:
+//
+//	?metric=<name>              (required)
+//	?window=5m|15m|1h|6h|24h  (default: 5m)
+//	?step=1m|5m|15m|1h         (default: 1m)
+//	?service=<name>             (optional; omit for all services)
+func GetMetricSeries(w http.ResponseWriter, r *http.Request) {
+	metricName := r.URL.Query().Get("metric")
+	if metricName == "" {
+		writeError(w, http.StatusBadRequest, "metric name is required")
+		return
+	}
+
+	wp, windowDur, ok := windowFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	rawStep := r.URL.Query().Get("step")
+	if rawStep == "" {
+		rawStep = "1m"
+	}
+	stepLabel, stepDur, ok := model.ParseStep(rawStep)
+	if !ok {
+		writeError(w, http.StatusBadRequest,
+			"invalid step: must be one of 1m, 5m, 15m, 1h")
+		return
+	}
+
+	if stepDur >= windowDur {
+		writeError(w, http.StatusBadRequest, "step must be smaller than window")
+		return
+	}
+
+	service := r.URL.Query().Get("service")
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	series, metricType, err := repository.GetMetricSeries(ctx, metricName, service, windowDur, stepDur)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query metric series")
+		return
+	}
+	if series == nil {
+		series = []model.MetricPoint{}
+	}
+
+	writeJSON(w, http.StatusOK, model.MetricSeriesResponse{
+		MetricName: metricName,
+		MetricType: metricType,
+		Service:    service,
+		Window:     string(wp),
+		Step:       stepLabel,
+		Series:     series,
+	})
+}
+
+// -----------------------------------------------------------------------
 // GetOperations — GET /api/v1/services/{service}/operations
 // -----------------------------------------------------------------------
 
