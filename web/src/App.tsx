@@ -1,101 +1,95 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-
-interface HealthResponse {
-  status: string
-  clickhouse: string
-  timestamp: string
-}
+import { AppShell } from './components/layout/AppShell'
+import { ServiceTable } from './components/ServiceTable'
+import { ServiceDetail } from './components/ServiceDetail'
+import { fetchServices } from './api/apm'
+import type { TimeWindow } from './types/apm'
 
 function App() {
-  const { data, isLoading, isError } = useQuery<HealthResponse>({
-    queryKey: ['health'],
-    queryFn: () => fetch('/health').then(r => r.json()),
+  const [window, setWindow] = useState<TimeWindow>('5m')
+  const [selectedService, setSelectedService] = useState<string | null>(null)
+
+  // Fetch services at the App level so ServiceDetail can read the summary
+  // without a second fetch. ServiceTable does its own query with the same key,
+  // so react-query deduplicates the network request.
+  const { data: servicesData } = useQuery({
+    queryKey: ['services', window],
+    queryFn: () => fetchServices(window),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
   })
 
+  const selectedSummary = servicesData?.services.find(
+    (s) => s.name === selectedService,
+  )
+
+  const handleServiceSelect = (name: string) => {
+    setSelectedService((prev) => (prev === name ? null : name))
+  }
+
+  const handleWindowChange = (w: TimeWindow) => {
+    setWindow(w)
+    // Keep selected service when changing window
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
-      {/* Logo */}
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight" style={{ color: 'var(--accent)' }}>
-          javi-dashboard
-        </h1>
-        <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-          Java APM Dashboard — Phase 0 Setup
-        </p>
-      </div>
+    <AppShell>
+      <div className="flex flex-col h-full">
+        {/* Page header */}
+        <div
+          className="px-6 py-4 border-b flex items-center justify-between flex-shrink-0"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <div>
+            <h1 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
+              Service Overview
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+              RED metrics — Rate · Errors · Duration
+            </p>
+          </div>
 
-      {/* Health card */}
-      <div
-        className="rounded-xl border p-6 w-full max-w-md space-y-3"
-        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-          System Status
-        </h2>
-
-        {isLoading && (
-          <p style={{ color: 'var(--muted)' }}>Checking...</p>
-        )}
-        {isError && (
-          <StatusRow label="API Server" status="error" value="unreachable" />
-        )}
-        {data && (
-          <>
-            <StatusRow label="API Server" status="ok" value="ok" />
-            <StatusRow label="ClickHouse" status={data.clickhouse === 'ok' ? 'ok' : 'error'} value={data.clickhouse} />
-            <div className="pt-2 text-xs" style={{ color: 'var(--muted)' }}>
-              {data.timestamp}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Phase roadmap */}
-      <div
-        className="rounded-xl border p-6 w-full max-w-md space-y-2"
-        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
-          Implementation Roadmap
-        </h2>
-        {[
-          { phase: 'Phase 0', label: 'Project Setup', done: true },
-          { phase: 'Phase 1', label: 'Service Overview (RED Metrics)', done: false },
-          { phase: 'Phase 2', label: 'Trace Explorer + Waterfall', done: false },
-          { phase: 'Phase 3', label: 'Log Viewer + Live Tail', done: false },
-          { phase: 'Phase 4', label: 'Service Topology Map', done: false },
-          { phase: 'Phase 5', label: 'Custom Metrics Dashboard', done: false },
-          { phase: 'Phase 6', label: 'Schema Hardening + Alerts', done: false },
-        ].map(({ phase, label, done }) => (
-          <div key={phase} className="flex items-center gap-3 text-sm">
+          {/* Live indicator */}
+          <div className="flex items-center gap-1.5">
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ background: done ? 'var(--success)' : 'var(--border)' }}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: 'var(--success)',
+                boxShadow: '0 0 4px var(--success)',
+              }}
             />
-            <span style={{ color: done ? 'var(--text)' : 'var(--muted)' }}>
-              <span className="font-medium">{phase}</span> — {label}
+            <span className="text-xs" style={{ color: 'var(--muted)' }}>
+              live · 30s refresh
             </span>
           </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+        </div>
 
-function StatusRow({ label, status, value }: { label: string; status: 'ok' | 'error'; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span style={{ color: 'var(--muted)' }}>{label}</span>
-      <span
-        className="px-2 py-0.5 rounded text-xs font-medium"
-        style={{
-          background: status === 'ok' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-          color: status === 'ok' ? 'var(--success)' : 'var(--error)',
-        }}
-      >
-        {value}
-      </span>
-    </div>
+        {/* Service table */}
+        <div
+          className="flex-shrink-0"
+          style={{ borderBottom: selectedService ? '1px solid var(--border)' : 'none' }}
+        >
+          <ServiceTable
+            window={window}
+            onWindowChange={handleWindowChange}
+            selectedService={selectedService}
+            onServiceSelect={handleServiceSelect}
+          />
+        </div>
+
+        {/* Service detail panel */}
+        {selectedService && (
+          <div className="flex-shrink-0">
+            <ServiceDetail
+              serviceName={selectedService}
+              summary={selectedSummary}
+              onClose={() => setSelectedService(null)}
+            />
+          </div>
+        )}
+      </div>
+    </AppShell>
   )
 }
 

@@ -31,10 +31,20 @@ func main() {
 	// Health check
 	r.Get("/health", handler.Health)
 
-	// API v1 (Phase 1~5에서 채워질 예정)
+	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 			w.Write([]byte(`{"message":"pong"}`))
+		})
+
+		// Phase 1: Service Overview RED Dashboard
+		// GET /api/v1/services                          — all services, aggregate RED
+		// GET /api/v1/services/{service}/red            — time-series RED for one service
+		// GET /api/v1/services/{service}/operations     — top operations for one service
+		r.Get("/services", handler.GetServices)
+		r.Route("/services/{service}", func(r chi.Router) {
+			r.Get("/red", handler.GetREDSeries)
+			r.Get("/operations", handler.GetOperations)
 		})
 	})
 
