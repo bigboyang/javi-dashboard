@@ -172,3 +172,26 @@ func TestGetLogs_ContentTypeIsJSON(t *testing.T) {
 		t.Errorf("Content-Type=%q, want application/json", ct)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// GetTopology — parameter validation
+// ---------------------------------------------------------------------------
+
+func TestGetTopology_InvalidWindow(t *testing.T) {
+	rec := callHandler(GetTopology, "GET", "/api/v1/topology?window=bad")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+	e := decodeError(t, rec)
+	if e.Error == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestGetTopology_ContentTypeIsJSON(t *testing.T) {
+	rec := callHandler(GetTopology, "GET", "/api/v1/topology?window=bad")
+	ct := rec.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type=%q, want application/json", ct)
+	}
+}

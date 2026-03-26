@@ -1,4 +1,4 @@
-import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse } from '../types/apm'
+import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse } from '../types/apm'
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -48,4 +48,8 @@ export function fetchLogs(
   if (level) params.set('level', level)
   if (search) params.set('search', search)
   return apiFetch<LogsResponse>(`/api/v1/logs?${params}`)
+}
+
+export function fetchTopology(window: string): Promise<TopologyResponse> {
+  return apiFetch<TopologyResponse>(`/api/v1/topology?window=${encodeURIComponent(window)}`)
 }

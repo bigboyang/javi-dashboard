@@ -91,3 +91,25 @@ export interface LogsResponse {
 }
 
 export type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'
+
+export interface TopologyNode {
+  name: string
+  total_requests: number
+  error_count: number
+  error_rate: number   // 0.0–1.0 (inbound call error rate)
+}
+
+export interface TopologyEdge {
+  caller: string
+  callee: string
+  call_count: number
+  error_count: number
+  error_rate: number   // 0.0–1.0
+  p95_ms: number
+}
+
+export interface TopologyResponse {
+  nodes: TopologyNode[]
+  edges: TopologyEdge[]
+  window: string
+}

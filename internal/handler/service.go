@@ -301,6 +301,52 @@ func GetLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 // -----------------------------------------------------------------------
+// GetTopology — GET /api/v1/topology
+// -----------------------------------------------------------------------
+
+// GetTopology handles GET /api/v1/topology.
+// Returns the service dependency graph derived from trace span parent-child
+// relationships within the requested time window.
+//
+// Query params:
+//
+//	?window=5m|15m|1h|6h|24h  (default: 1h)
+func GetTopology(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("window")
+	if raw == "" {
+		raw = "1h"
+	}
+	wp, dur, ok := model.ParseWindow(raw)
+	if !ok {
+		writeError(w, http.StatusBadRequest,
+			"invalid window: must be one of 5m, 15m, 1h, 6h, 24h")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	nodes, edges, err := repository.GetServiceTopology(ctx, dur)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query topology")
+		return
+	}
+
+	if nodes == nil {
+		nodes = []model.TopologyNode{}
+	}
+	if edges == nil {
+		edges = []model.TopologyEdge{}
+	}
+
+	writeJSON(w, http.StatusOK, model.TopologyResponse{
+		Nodes:  nodes,
+		Edges:  edges,
+		Window: string(wp),
+	})
+}
+
+// -----------------------------------------------------------------------
 // GetOperations — GET /api/v1/services/{service}/operations
 // -----------------------------------------------------------------------
 

@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AppShell } from './components/layout/AppShell'
+import type { Page } from './components/layout/AppShell'
 import { ServiceTable } from './components/ServiceTable'
 import { ServiceDetail } from './components/ServiceDetail'
 import { TraceExplorer } from './components/TraceExplorer'
 import { LogExplorer } from './components/LogExplorer'
+import { TopologyExplorer } from './components/TopologyExplorer'
 import { fetchServices } from './api/apm'
 import type { TimeWindow } from './types/apm'
-
-type Page = 'overview' | 'traces' | 'logs'
 
 function App() {
   const [page, setPage] = useState<Page>('overview')
@@ -106,6 +106,10 @@ function App() {
 
       {page === 'logs' && (
         <LogExplorer services={serviceNames} />
+      )}
+
+      {page === 'topology' && (
+        <TopologyExplorer />
       )}
     </AppShell>
   )

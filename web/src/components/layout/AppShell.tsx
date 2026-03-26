@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { Activity, GitBranch, ScrollText } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network } from 'lucide-react'
 
-type Page = 'overview' | 'traces' | 'logs'
+type Page = 'overview' | 'traces' | 'logs' | 'topology'
 
 interface NavItem {
   icon: ReactNode
@@ -9,6 +9,8 @@ interface NavItem {
   page: Page | null  // null = disabled
   active: boolean
 }
+
+export type { Page }
 
 interface AppShellProps {
   children: ReactNode
@@ -35,6 +37,12 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
       label: 'Logs',
       page: 'logs',
       active: activePage === 'logs',
+    },
+    {
+      icon: <Network size={16} />,
+      label: 'Topology',
+      page: 'topology',
+      active: activePage === 'topology',
     },
   ]
 
@@ -89,10 +97,10 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 2
+            Phase 4
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            Log Explorer
+            Service Topology
           </p>
         </div>
       </aside>

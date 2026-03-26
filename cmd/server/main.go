@@ -56,6 +56,10 @@ func main() {
 		// Phase 3: Log Explorer
 		// GET /api/v1/logs  — recent log entries with optional service/level/search filters
 		r.Get("/logs", handler.GetLogs)
+
+		// Phase 4: Service Topology
+		// GET /api/v1/topology  — service dependency graph derived from trace spans
+		r.Get("/topology", handler.GetTopology)
 	})
 
 	port := os.Getenv("SERVER_PORT")

@@ -7,6 +7,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/kkc/javi-dashboard/internal/ch"
@@ -554,6 +555,112 @@ LIMIT ?
 		return nil, fmt.Errorf("list logs rows: %w", err)
 	}
 	return results, nil
+}
+
+// -----------------------------------------------------------------------
+// GetServiceTopology
+// -----------------------------------------------------------------------
+
+// topologyEdgeRow is an intermediate scan target for the service dependency query.
+type topologyEdgeRow struct {
+	Caller     string
+	Callee     string
+	CallCount  uint64
+	ErrorCount uint64
+	P95Ms      float64
+}
+
+// GetServiceTopology returns the service dependency graph derived from trace span
+// parent-child relationships. An edge A→B exists when at least one span in service B
+// had a parent span belonging to service A within the requested window.
+//
+// Query design notes:
+//   - We self-join apm.spans on (trace_id, parent_span_id = span_id) to identify
+//     cross-service parent-child span pairs. ClickHouse's bloom filter index on
+//     trace_id makes this join efficient for recent-window queries.
+//   - Only edges where parent.service_name != child.service_name are included;
+//     intra-service parent-child spans are not dependency edges.
+//   - Node stats are derived from the edge data: a node's TotalRequests reflects
+//     inbound call volume (how often it is called as a callee).
+func GetServiceTopology(ctx context.Context, window time.Duration) ([]model.TopologyNode, []model.TopologyEdge, error) {
+	windowSec := windowSeconds(window)
+
+	const query = `
+SELECT
+    parent.service_name                                        AS caller,
+    child.service_name                                         AS callee,
+    count()                                                    AS call_count,
+    countIf(child.status_code = 2)                            AS error_count,
+    quantileExact(0.95)(child.duration_nano / 1e6)            AS p95_ms
+FROM apm.spans AS child
+INNER JOIN apm.spans AS parent
+    ON child.trace_id     = parent.trace_id
+   AND child.parent_span_id = parent.span_id
+WHERE fromUnixTimestamp64Nano(child.start_time_nano) >= now() - INTERVAL ? SECOND
+  AND parent.service_name != child.service_name
+GROUP BY caller, callee
+ORDER BY call_count DESC
+`
+	rows, err := ch.DB.Query(ctx, query, windowSec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("topology query: %w", err)
+	}
+	defer rows.Close()
+
+	// Use a map to accumulate per-node inbound stats as we scan edges.
+	nodeStats := make(map[string]*model.TopologyNode)
+
+	var edges []model.TopologyEdge
+	for rows.Next() {
+		var r topologyEdgeRow
+		if err := rows.Scan(
+			&r.Caller,
+			&r.Callee,
+			&r.CallCount,
+			&r.ErrorCount,
+			&r.P95Ms,
+		); err != nil {
+			return nil, nil, fmt.Errorf("topology scan: %w", err)
+		}
+
+		errorRate := 0.0
+		if r.CallCount > 0 {
+			errorRate = float64(r.ErrorCount) / float64(r.CallCount)
+		}
+		edges = append(edges, model.TopologyEdge{
+			Caller:     r.Caller,
+			Callee:     r.Callee,
+			CallCount:  r.CallCount,
+			ErrorCount: r.ErrorCount,
+			ErrorRate:  errorRate,
+			P95Ms:      r.P95Ms,
+		})
+
+		// Ensure both endpoints appear as nodes.
+		if _, ok := nodeStats[r.Caller]; !ok {
+			nodeStats[r.Caller] = &model.TopologyNode{Name: r.Caller}
+		}
+		if _, ok := nodeStats[r.Callee]; !ok {
+			nodeStats[r.Callee] = &model.TopologyNode{Name: r.Callee}
+		}
+		// Accumulate inbound volume on the callee node.
+		nodeStats[r.Callee].TotalRequests += r.CallCount
+		nodeStats[r.Callee].ErrorCount += r.ErrorCount
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("topology rows: %w", err)
+	}
+
+	nodes := make([]model.TopologyNode, 0, len(nodeStats))
+	for _, n := range nodeStats {
+		if n.TotalRequests > 0 {
+			n.ErrorRate = float64(n.ErrorCount) / float64(n.TotalRequests)
+		}
+		nodes = append(nodes, *n)
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
+
+	return nodes, edges, nil
 }
 
 // GetTraceSpans returns all spans for a given trace ID ordered by start time.

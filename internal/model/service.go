@@ -175,3 +175,31 @@ type LogsResponse struct {
 	Window string     `json:"window"`
 	Total  int        `json:"total"`
 }
+
+// TopologyNode represents a service node in the dependency graph.
+// TotalRequests and ErrorCount reflect inbound call volume so node color
+// communicates how healthy the service is as a dependency.
+type TopologyNode struct {
+	Name          string  `json:"name"`
+	TotalRequests uint64  `json:"total_requests"`
+	ErrorCount    uint64  `json:"error_count"`
+	ErrorRate     float64 `json:"error_rate"`
+}
+
+// TopologyEdge represents a directed call relationship between two services.
+// Caller→Callee means at least one span in Callee had a parent span in Caller.
+type TopologyEdge struct {
+	Caller     string  `json:"caller"`
+	Callee     string  `json:"callee"`
+	CallCount  uint64  `json:"call_count"`
+	ErrorCount uint64  `json:"error_count"`
+	ErrorRate  float64 `json:"error_rate"`
+	P95Ms      float64 `json:"p95_ms"`
+}
+
+// TopologyResponse is the top-level envelope for GET /api/v1/topology.
+type TopologyResponse struct {
+	Nodes  []TopologyNode `json:"nodes"`
+	Edges  []TopologyEdge `json:"edges"`
+	Window string         `json:"window"`
+}
