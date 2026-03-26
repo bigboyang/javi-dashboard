@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Activity, GitBranch, ScrollText } from 'lucide-react'
 
-type Page = 'overview' | 'traces'
+type Page = 'overview' | 'traces' | 'logs'
 
 interface NavItem {
   icon: ReactNode
@@ -33,8 +33,8 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
     {
       icon: <ScrollText size={16} />,
       label: 'Logs',
-      page: null,
-      active: false,
+      page: 'logs',
+      active: activePage === 'logs',
     },
   ]
 
@@ -92,7 +92,7 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
             Phase 2
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            Trace Explorer
+            Log Explorer
           </p>
         </div>
       </aside>

@@ -1,4 +1,4 @@
-import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse } from '../types/apm'
+import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse } from '../types/apm'
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -34,4 +34,18 @@ export function fetchTraces(
 
 export function fetchTraceDetail(traceId: string): Promise<TraceDetailResponse> {
   return apiFetch<TraceDetailResponse>(`/api/v1/traces/${encodeURIComponent(traceId)}`)
+}
+
+export function fetchLogs(
+  window: string,
+  service?: string,
+  level?: string,
+  search?: string,
+  limit = 200,
+): Promise<LogsResponse> {
+  const params = new URLSearchParams({ window, limit: String(limit) })
+  if (service) params.set('service', service)
+  if (level) params.set('level', level)
+  if (search) params.set('search', search)
+  return apiFetch<LogsResponse>(`/api/v1/logs?${params}`)
 }

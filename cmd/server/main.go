@@ -52,6 +52,10 @@ func main() {
 		// GET /api/v1/traces/{traceId}         — all spans for a trace (waterfall)
 		r.Get("/traces", handler.GetTraces)
 		r.Get("/traces/{traceId}", handler.GetTraceDetail)
+
+		// Phase 3: Log Explorer
+		// GET /api/v1/logs  — recent log entries with optional service/level/search filters
+		r.Get("/logs", handler.GetLogs)
 	})
 
 	port := os.Getenv("SERVER_PORT")

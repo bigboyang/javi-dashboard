@@ -239,6 +239,68 @@ func GetTraceDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 // -----------------------------------------------------------------------
+// GetLogs — GET /api/v1/logs
+// -----------------------------------------------------------------------
+
+// GetLogs handles GET /api/v1/logs.
+// Query params:
+//
+//	?window=5m|15m|1h|6h|24h  (default: 1h)
+//	?service=<name>             (optional; omit for all services)
+//	?level=INFO|WARN|ERROR|…   (optional; case-insensitive severity_text match)
+//	?search=<text>              (optional; case-insensitive substring of body, max 200 chars)
+//	?limit=<n>                  (default: 200, max: 500)
+func GetLogs(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("window")
+	if raw == "" {
+		raw = "1h"
+	}
+	wp, dur, ok := model.ParseWindow(raw)
+	if !ok {
+		writeError(w, http.StatusBadRequest,
+			"invalid window: must be one of 5m, 15m, 1h, 6h, 24h")
+		return
+	}
+
+	service := r.URL.Query().Get("service")
+	level := r.URL.Query().Get("level")
+	search := r.URL.Query().Get("search")
+
+	if len(search) > 200 {
+		writeError(w, http.StatusBadRequest, "search too long: max 200 characters")
+		return
+	}
+
+	limit := 200
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		var n int
+		if _, err := fmt.Sscanf(rawLimit, "%d", &n); err != nil || n < 1 || n > 500 {
+			writeError(w, http.StatusBadRequest, "invalid limit: must be 1–500")
+			return
+		}
+		limit = n
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	logs, err := repository.ListLogs(ctx, service, level, search, dur, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query logs")
+		return
+	}
+	if logs == nil {
+		logs = []model.LogEntry{}
+	}
+
+	writeJSON(w, http.StatusOK, model.LogsResponse{
+		Logs:   logs,
+		Window: string(wp),
+		Total:  len(logs),
+	})
+}
+
+// -----------------------------------------------------------------------
 // GetOperations — GET /api/v1/services/{service}/operations
 // -----------------------------------------------------------------------
 

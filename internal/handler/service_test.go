@@ -117,3 +117,58 @@ func TestGetTraces_ContentTypeIsJSON(t *testing.T) {
 		t.Errorf("Content-Type=%q, want application/json", ct)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// GetLogs — parameter validation
+// ---------------------------------------------------------------------------
+
+func TestGetLogs_InvalidWindow(t *testing.T) {
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=bad")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+	e := decodeError(t, rec)
+	if e.Error == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestGetLogs_LimitZero(t *testing.T) {
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=1h&limit=0")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetLogs_LimitOver500(t *testing.T) {
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=1h&limit=501")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetLogs_LimitNonNumeric(t *testing.T) {
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=1h&limit=abc")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetLogs_SearchTooLong(t *testing.T) {
+	long := make([]byte, 201)
+	for i := range long {
+		long[i] = 'a'
+	}
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=1h&search="+string(long))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestGetLogs_ContentTypeIsJSON(t *testing.T) {
+	rec := callHandler(GetLogs, "GET", "/api/v1/logs?window=bad")
+	ct := rec.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("Content-Type=%q, want application/json", ct)
+	}
+}

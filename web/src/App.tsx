@@ -4,10 +4,11 @@ import { AppShell } from './components/layout/AppShell'
 import { ServiceTable } from './components/ServiceTable'
 import { ServiceDetail } from './components/ServiceDetail'
 import { TraceExplorer } from './components/TraceExplorer'
+import { LogExplorer } from './components/LogExplorer'
 import { fetchServices } from './api/apm'
 import type { TimeWindow } from './types/apm'
 
-type Page = 'overview' | 'traces'
+type Page = 'overview' | 'traces' | 'logs'
 
 function App() {
   const [page, setPage] = useState<Page>('overview')
@@ -101,6 +102,10 @@ function App() {
 
       {page === 'traces' && (
         <TraceExplorer services={serviceNames} />
+      )}
+
+      {page === 'logs' && (
+        <LogExplorer services={serviceNames} />
       )}
     </AppShell>
   )

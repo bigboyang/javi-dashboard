@@ -70,3 +70,24 @@ export interface TraceDetailResponse {
   trace_id: string
   spans: TraceSpan[]
 }
+
+export interface LogEntry {
+  timestamp_nano: number
+  timestamp: string
+  service_name: string
+  severity_text: string
+  severity_number: number
+  body: string
+  trace_id: string
+  span_id: string
+  resource_attrs: Record<string, string>
+  log_attrs: Record<string, string>
+}
+
+export interface LogsResponse {
+  logs: LogEntry[]
+  window: string
+  total: number
+}
+
+export type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'

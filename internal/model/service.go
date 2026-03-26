@@ -152,3 +152,26 @@ type TraceDetailResponse struct {
 	TraceID string      `json:"trace_id"`
 	Spans   []TraceSpan `json:"spans"`
 }
+
+// LogEntry holds a single log record received via the OTLP log pipeline.
+// SeverityNumber follows OTLP semantics: 1-4=TRACE, 5-8=DEBUG, 9-12=INFO,
+// 13-16=WARN, 17-20=ERROR, 21-24=FATAL.
+type LogEntry struct {
+	TimestampNano  int64             `json:"timestamp_nano"`
+	Timestamp      time.Time         `json:"timestamp"`
+	ServiceName    string            `json:"service_name"`
+	SeverityText   string            `json:"severity_text"`
+	SeverityNumber uint8             `json:"severity_number"`
+	Body           string            `json:"body"`
+	TraceID        string            `json:"trace_id"`
+	SpanID         string            `json:"span_id"`
+	ResourceAttrs  map[string]string `json:"resource_attrs"`
+	LogAttrs       map[string]string `json:"log_attrs"`
+}
+
+// LogsResponse is the top-level envelope for GET /api/v1/logs.
+type LogsResponse struct {
+	Logs   []LogEntry `json:"logs"`
+	Window string     `json:"window"`
+	Total  int        `json:"total"`
+}

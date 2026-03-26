@@ -442,6 +442,120 @@ type traceSpanRow struct {
 	Attrs          map[string]string
 }
 
+// -----------------------------------------------------------------------
+// ListLogs
+// -----------------------------------------------------------------------
+
+// logRow is an intermediate scan target for the log list query.
+type logRow struct {
+	TimestampNano  int64
+	ServiceName    string
+	SeverityText   string
+	SeverityNumber uint8
+	Body           string
+	TraceID        string
+	SpanID         string
+	ResourceAttrs  map[string]string
+	LogAttrs       map[string]string
+}
+
+// ListLogs returns recent log entries filtered by time window, service name,
+// severity level, and an optional case-insensitive body search string.
+//
+// Query design notes:
+//   - All user-supplied filter values (service, level, search) are bound as
+//     positional ? parameters to prevent SQL injection.
+//   - positionCaseInsensitive is ClickHouse's built-in case-insensitive
+//     substring search — cheaper than ilike for long body strings.
+//   - We build the WHERE clause dynamically but never interpolate user values
+//     directly into the query string.
+func ListLogs(
+	ctx context.Context,
+	service string,
+	level string,
+	search string,
+	window time.Duration,
+	limit int,
+) ([]model.LogEntry, error) {
+	windowSec := windowSeconds(window)
+
+	whereExtra := ""
+	args := []any{windowSec}
+
+	if service != "" {
+		whereExtra += " AND service_name = ?"
+		args = append(args, service)
+	}
+	if level != "" {
+		whereExtra += " AND upper(severity_text) = upper(?)"
+		args = append(args, level)
+	}
+	if search != "" {
+		whereExtra += " AND positionCaseInsensitive(body, ?) > 0"
+		args = append(args, search)
+	}
+	args = append(args, limit)
+
+	query := `
+SELECT
+    timestamp_nano,
+    service_name,
+    severity_text,
+    severity_number,
+    body,
+    trace_id,
+    span_id,
+    resource_attrs,
+    log_attrs
+FROM apm.logs
+WHERE fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
+		whereExtra + `
+ORDER BY timestamp_nano DESC
+LIMIT ?
+`
+	rows, err := ch.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list logs query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.LogEntry
+	for rows.Next() {
+		var r logRow
+		r.ResourceAttrs = make(map[string]string)
+		r.LogAttrs = make(map[string]string)
+		if err := rows.Scan(
+			&r.TimestampNano,
+			&r.ServiceName,
+			&r.SeverityText,
+			&r.SeverityNumber,
+			&r.Body,
+			&r.TraceID,
+			&r.SpanID,
+			&r.ResourceAttrs,
+			&r.LogAttrs,
+		); err != nil {
+			return nil, fmt.Errorf("list logs scan: %w", err)
+		}
+		results = append(results, model.LogEntry{
+			TimestampNano:  r.TimestampNano,
+			Timestamp:      time.Unix(0, r.TimestampNano).UTC(),
+			ServiceName:    r.ServiceName,
+			SeverityText:   r.SeverityText,
+			SeverityNumber: r.SeverityNumber,
+			Body:           r.Body,
+			TraceID:        r.TraceID,
+			SpanID:         r.SpanID,
+			ResourceAttrs:  r.ResourceAttrs,
+			LogAttrs:       r.LogAttrs,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list logs rows: %w", err)
+	}
+	return results, nil
+}
+
 // GetTraceSpans returns all spans for a given trace ID ordered by start time.
 // It includes HTTP semantic convention fields and the full span attribute map
 // so the frontend can render a waterfall timeline and attribute details.
