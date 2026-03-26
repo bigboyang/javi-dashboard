@@ -46,6 +46,12 @@ func main() {
 			r.Get("/red", handler.GetREDSeries)
 			r.Get("/operations", handler.GetOperations)
 		})
+
+		// Phase 2: Trace Explorer
+		// GET /api/v1/traces                  — recent trace list with optional service filter
+		// GET /api/v1/traces/{traceId}         — all spans for a trace (waterfall)
+		r.Get("/traces", handler.GetTraces)
+		r.Get("/traces/{traceId}", handler.GetTraceDetail)
 	})
 
 	port := os.Getenv("SERVER_PORT")

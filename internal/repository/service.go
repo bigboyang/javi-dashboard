@@ -312,3 +312,200 @@ LIMIT 50
 	}
 	return results, nil
 }
+
+// -----------------------------------------------------------------------
+// ListTraces
+// -----------------------------------------------------------------------
+
+// traceSummaryRow is an intermediate scan target for the trace list query.
+type traceSummaryRow struct {
+	TraceID       string
+	ServiceName   string
+	RootOperation string
+	StartTime     time.Time
+	DurationMs    float64
+	StatusCode    uint8
+	SpanCount     uint64
+}
+
+// ListTraces returns recent distributed traces grouped by trace_id. Each row
+// reflects the root span's service and operation (the earliest span in the
+// trace by start_time_nano), the wall-clock duration of the full trace, the
+// worst status code across all spans, and the total span count.
+//
+// An optional service filter narrows results to traces where the root span
+// originated from a given service. Pass "" to return all services.
+func ListTraces(
+	ctx context.Context,
+	service string,
+	window time.Duration,
+	limit int,
+) ([]model.TraceSummary, error) {
+	windowSec := windowSeconds(window)
+
+	// Build query with optional service filter using separate query strings to
+	// avoid passing an empty string as a ClickHouse parameter for the LowCardinality
+	// service_name column, which can produce unexpected type coercions.
+	var (
+		query string
+		args  []any
+	)
+	if service != "" {
+		query = `
+SELECT
+    trace_id,
+    argMin(service_name, start_time_nano)                                           AS service_name,
+    argMin(name, start_time_nano)                                                   AS root_operation,
+    fromUnixTimestamp64Nano(min(start_time_nano))                                   AS start_time,
+    (max(start_time_nano + duration_nano) - min(start_time_nano)) / 1e6             AS duration_ms,
+    max(status_code)                                                                AS status_code,
+    count()                                                                         AS span_count
+FROM apm.spans
+WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
+  AND service_name = ?
+GROUP BY trace_id
+ORDER BY start_time DESC
+LIMIT ?
+`
+		args = []any{windowSec, service, limit}
+	} else {
+		query = `
+SELECT
+    trace_id,
+    argMin(service_name, start_time_nano)                                           AS service_name,
+    argMin(name, start_time_nano)                                                   AS root_operation,
+    fromUnixTimestamp64Nano(min(start_time_nano))                                   AS start_time,
+    (max(start_time_nano + duration_nano) - min(start_time_nano)) / 1e6             AS duration_ms,
+    max(status_code)                                                                AS status_code,
+    count()                                                                         AS span_count
+FROM apm.spans
+WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
+GROUP BY trace_id
+ORDER BY start_time DESC
+LIMIT ?
+`
+		args = []any{windowSec, limit}
+	}
+
+	rows, err := ch.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list traces query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.TraceSummary
+	for rows.Next() {
+		var r traceSummaryRow
+		if err := rows.Scan(
+			&r.TraceID,
+			&r.ServiceName,
+			&r.RootOperation,
+			&r.StartTime,
+			&r.DurationMs,
+			&r.StatusCode,
+			&r.SpanCount,
+		); err != nil {
+			return nil, fmt.Errorf("list traces scan: %w", err)
+		}
+		results = append(results, model.TraceSummary{
+			TraceID:       r.TraceID,
+			ServiceName:   r.ServiceName,
+			RootOperation: r.RootOperation,
+			StartTime:     r.StartTime.UTC(),
+			DurationMs:    r.DurationMs,
+			StatusCode:    r.StatusCode,
+			SpanCount:     r.SpanCount,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list traces rows: %w", err)
+	}
+	return results, nil
+}
+
+// -----------------------------------------------------------------------
+// GetTraceSpans
+// -----------------------------------------------------------------------
+
+// traceSpanRow is an intermediate scan target for the trace detail query.
+type traceSpanRow struct {
+	TraceID        string
+	SpanID         string
+	ParentSpanID   string
+	ServiceName    string
+	Name           string
+	StartTime      time.Time
+	DurationMs     float64
+	StatusCode     uint8
+	HttpMethod     string
+	HttpStatusCode uint16
+	Attrs          map[string]string
+}
+
+// GetTraceSpans returns all spans for a given trace ID ordered by start time.
+// It includes HTTP semantic convention fields and the full span attribute map
+// so the frontend can render a waterfall timeline and attribute details.
+func GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error) {
+	const query = `
+SELECT
+    trace_id,
+    span_id,
+    parent_span_id,
+    service_name,
+    name,
+    fromUnixTimestamp64Nano(start_time_nano)    AS start_time,
+    duration_nano / 1e6                         AS duration_ms,
+    status_code,
+    http_method,
+    http_status_code,
+    span_attrs
+FROM apm.spans
+WHERE trace_id = ?
+ORDER BY start_time_nano ASC
+`
+	rows, err := ch.DB.Query(ctx, query, traceID)
+	if err != nil {
+		return nil, fmt.Errorf("get trace spans query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.TraceSpan
+	for rows.Next() {
+		var r traceSpanRow
+		if r.Attrs == nil {
+			r.Attrs = make(map[string]string)
+		}
+		if err := rows.Scan(
+			&r.TraceID,
+			&r.SpanID,
+			&r.ParentSpanID,
+			&r.ServiceName,
+			&r.Name,
+			&r.StartTime,
+			&r.DurationMs,
+			&r.StatusCode,
+			&r.HttpMethod,
+			&r.HttpStatusCode,
+			&r.Attrs,
+		); err != nil {
+			return nil, fmt.Errorf("get trace spans scan: %w", err)
+		}
+		results = append(results, model.TraceSpan{
+			TraceID:        r.TraceID,
+			SpanID:         r.SpanID,
+			ParentSpanID:   r.ParentSpanID,
+			ServiceName:    r.ServiceName,
+			Name:           r.Name,
+			StartTime:      r.StartTime.UTC(),
+			DurationMs:     r.DurationMs,
+			StatusCode:     r.StatusCode,
+			HttpMethod:     r.HttpMethod,
+			HttpStatusCode: r.HttpStatusCode,
+			Attrs:          r.Attrs,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("get trace spans rows: %w", err)
+	}
+	return results, nil
+}

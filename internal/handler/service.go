@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -150,6 +151,90 @@ func GetREDSeries(w http.ResponseWriter, r *http.Request) {
 		Window:  string(wp),
 		Step:    stepLabel,
 		Series:  series,
+	})
+}
+
+// -----------------------------------------------------------------------
+// GetTraces — GET /api/v1/traces
+// -----------------------------------------------------------------------
+
+// GetTraces handles GET /api/v1/traces.
+// Query params:
+//
+//	?window=5m|15m|1h|6h|24h   (default: 1h)
+//	?service=<name>             (optional; omit for all services)
+//	?limit=<n>                  (default: 100, max: 500)
+func GetTraces(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("window")
+	if raw == "" {
+		raw = "1h"
+	}
+	wp, dur, ok := model.ParseWindow(raw)
+	if !ok {
+		writeError(w, http.StatusBadRequest,
+			"invalid window: must be one of 5m, 15m, 1h, 6h, 24h")
+		return
+	}
+
+	service := r.URL.Query().Get("service")
+
+	limit := 100
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		var n int
+		if _, err := fmt.Sscanf(rawLimit, "%d", &n); err != nil || n < 1 || n > 500 {
+			writeError(w, http.StatusBadRequest, "invalid limit: must be 1–500")
+			return
+		}
+		limit = n
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	traces, err := repository.ListTraces(ctx, service, dur, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query traces")
+		return
+	}
+	if traces == nil {
+		traces = []model.TraceSummary{}
+	}
+
+	writeJSON(w, http.StatusOK, model.TracesResponse{
+		Traces: traces,
+		Window: string(wp),
+		Total:  len(traces),
+	})
+}
+
+// -----------------------------------------------------------------------
+// GetTraceDetail — GET /api/v1/traces/{traceId}
+// -----------------------------------------------------------------------
+
+// GetTraceDetail handles GET /api/v1/traces/{traceId}.
+// Returns all spans for a given trace ID for waterfall rendering.
+func GetTraceDetail(w http.ResponseWriter, r *http.Request) {
+	traceID := chi.URLParam(r, "traceId")
+	if traceID == "" {
+		writeError(w, http.StatusBadRequest, "trace ID is required")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	spans, err := repository.GetTraceSpans(ctx, traceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query trace spans")
+		return
+	}
+	if spans == nil {
+		spans = []model.TraceSpan{}
+	}
+
+	writeJSON(w, http.StatusOK, model.TraceDetailResponse{
+		TraceID: traceID,
+		Spans:   spans,
 	})
 }
 

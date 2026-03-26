@@ -1,36 +1,40 @@
 import type { ReactNode } from 'react'
 import { Activity, GitBranch, ScrollText } from 'lucide-react'
 
+type Page = 'overview' | 'traces'
+
 interface NavItem {
   icon: ReactNode
   label: string
+  page: Page | null  // null = disabled
   active: boolean
-  disabled: boolean
 }
 
 interface AppShellProps {
   children: ReactNode
+  activePage: Page
+  onPageChange: (page: Page) => void
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, activePage, onPageChange }: AppShellProps) {
   const navItems: NavItem[] = [
     {
       icon: <Activity size={16} />,
       label: 'Overview',
-      active: true,
-      disabled: false,
+      page: 'overview',
+      active: activePage === 'overview',
     },
     {
       icon: <GitBranch size={16} />,
       label: 'Traces',
-      active: false,
-      disabled: true,
+      page: 'traces',
+      active: activePage === 'traces',
     },
     {
       icon: <ScrollText size={16} />,
       label: 'Logs',
+      page: null,
       active: false,
-      disabled: true,
     },
   ]
 
@@ -71,17 +75,24 @@ export function AppShell({ children }: AppShellProps) {
         {/* Nav */}
         <nav className="flex flex-col gap-0.5 p-2 mt-1">
           {navItems.map((item) => (
-            <NavButton key={item.label} {...item} />
+            <NavButton
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              active={item.active}
+              disabled={item.page === null}
+              onClick={() => item.page && onPageChange(item.page)}
+            />
           ))}
         </nav>
 
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 1
+            Phase 2
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            RED Metrics
+            Trace Explorer
           </p>
         </div>
       </aside>
@@ -92,7 +103,19 @@ export function AppShell({ children }: AppShellProps) {
   )
 }
 
-function NavButton({ icon, label, active, disabled }: NavItem) {
+function NavButton({
+  icon,
+  label,
+  active,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  active: boolean
+  disabled: boolean
+  onClick: () => void
+}) {
   const baseStyle: React.CSSProperties = {
     color: disabled
       ? 'var(--muted)'
@@ -101,7 +124,7 @@ function NavButton({ icon, label, active, disabled }: NavItem) {
         : 'var(--muted)',
     background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
     opacity: disabled ? 0.4 : 1,
-    cursor: disabled ? 'not-allowed' : 'default',
+    cursor: disabled ? 'not-allowed' : 'pointer',
   }
 
   return (
@@ -110,6 +133,7 @@ function NavButton({ icon, label, active, disabled }: NavItem) {
       style={baseStyle}
       aria-disabled={disabled}
       role="menuitem"
+      onClick={disabled ? undefined : onClick}
     >
       {icon}
       <span>{label}</span>

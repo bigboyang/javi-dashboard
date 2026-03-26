@@ -112,3 +112,43 @@ type OperationsResponse struct {
 	Window     string             `json:"window"`
 	Operations []OperationSummary `json:"operations"`
 }
+
+// TraceSummary is an aggregate view of a distributed trace for the explorer list.
+// StatusCode follows OTLP semantics: 0=UNSET, 1=OK, 2=ERROR.
+type TraceSummary struct {
+	TraceID       string    `json:"trace_id"`
+	ServiceName   string    `json:"service_name"`
+	RootOperation string    `json:"root_operation"`
+	StartTime     time.Time `json:"start_time"`
+	DurationMs    float64   `json:"duration_ms"`
+	StatusCode    uint8     `json:"status_code"`
+	SpanCount     uint64    `json:"span_count"`
+}
+
+// TracesResponse is the top-level envelope for GET /api/v1/traces.
+type TracesResponse struct {
+	Traces []TraceSummary `json:"traces"`
+	Window string         `json:"window"`
+	Total  int            `json:"total"`
+}
+
+// TraceSpan carries the full details of a single span for the trace detail view.
+type TraceSpan struct {
+	TraceID        string            `json:"trace_id"`
+	SpanID         string            `json:"span_id"`
+	ParentSpanID   string            `json:"parent_span_id"`
+	ServiceName    string            `json:"service_name"`
+	Name           string            `json:"name"`
+	StartTime      time.Time         `json:"start_time"`
+	DurationMs     float64           `json:"duration_ms"`
+	StatusCode     uint8             `json:"status_code"`
+	HttpMethod     string            `json:"http_method"`
+	HttpStatusCode uint16            `json:"http_status_code"`
+	Attrs          map[string]string `json:"attrs"`
+}
+
+// TraceDetailResponse is the top-level envelope for GET /api/v1/traces/{traceId}.
+type TraceDetailResponse struct {
+	TraceID string      `json:"trace_id"`
+	Spans   []TraceSpan `json:"spans"`
+}
