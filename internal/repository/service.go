@@ -55,12 +55,11 @@ type serviceRow struct {
 //     (dev/staging) return accurate values. For very high-volume production
 //     deployments, switching to quantileTDigest(0.5/0.95/0.99) reduces memory
 //     at the cost of ~1% approximation error.
-//   - duration_ns / 1e6 converts nanoseconds to milliseconds inside ClickHouse,
+//   - duration_nano / 1e6 converts nanoseconds to milliseconds inside ClickHouse,
 //     avoiding any floating-point round-trip through Go.
-//   - The WHERE clause uses now() - INTERVAL {windowSec} SECOND so ClickHouse
-//     can prune partitions that pre-date the window. Binding via query
-//     parameters (?) rather than fmt.Sprintf prevents SQL injection for the
-//     service name path parameter used in sibling queries.
+//   - start_time_nano is stored as Int64 nanoseconds since epoch; we convert via
+//     fromUnixTimestamp64Nano so ClickHouse can apply its DateTime partition pruning.
+//   - Binding via query parameters (?) rather than fmt.Sprintf prevents SQL injection.
 func ListServices(ctx context.Context, window time.Duration) ([]model.ServiceSummary, error) {
 	windowSec := windowSeconds(window)
 	winMin := windowMinutes(window)
@@ -69,13 +68,13 @@ func ListServices(ctx context.Context, window time.Duration) ([]model.ServiceSum
 	const query = `
 SELECT
     service_name,
-    count()                                          AS total_requests,
-    countIf(status_code = 2)                         AS error_count,
-    quantileExact(0.5)(duration_ns / 1e6)            AS p50_ms,
-    quantileExact(0.95)(duration_ns / 1e6)           AS p95_ms,
-    quantileExact(0.99)(duration_ns / 1e6)           AS p99_ms
+    count()                                               AS total_requests,
+    countIf(status_code = 2)                              AS error_count,
+    quantileExact(0.5)(duration_nano / 1e6)               AS p50_ms,
+    quantileExact(0.95)(duration_nano / 1e6)              AS p95_ms,
+    quantileExact(0.99)(duration_nano / 1e6)              AS p99_ms
 FROM apm.spans
-WHERE start_time >= now() - INTERVAL ? SECOND
+WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
 GROUP BY service_name
 ORDER BY total_requests DESC
 `
@@ -139,7 +138,7 @@ type redSeriesRow struct {
 // GetREDSeries returns time-bucketed RED metrics for a single service.
 //
 // Query design notes:
-//   - toStartOfInterval(start_time, INTERVAL {stepSec} SECOND) is ClickHouse's
+//   - toStartOfInterval on a DateTime64 derived from start_time_nano is ClickHouse's
 //     native time-bucketing function and is index-friendly.
 //   - We fill gaps in the series on the Go side after scanning, which is simpler
 //     than a ClickHouse WITH FILL clause and produces consistent JSON even when
@@ -156,15 +155,15 @@ func GetREDSeries(
 
 	const query = `
 SELECT
-    toStartOfInterval(start_time, INTERVAL ? SECOND) AS ts,
-    count()                                           AS count,
-    countIf(status_code = 2)                          AS error_count,
-    quantileExact(0.5)(duration_ns / 1e6)             AS p50_ms,
-    quantileExact(0.95)(duration_ns / 1e6)            AS p95_ms,
-    quantileExact(0.99)(duration_ns / 1e6)            AS p99_ms
+    toStartOfInterval(fromUnixTimestamp64Nano(start_time_nano), INTERVAL ? SECOND) AS ts,
+    count()                                                                          AS count,
+    countIf(status_code = 2)                                                         AS error_count,
+    quantileExact(0.5)(duration_nano / 1e6)                                          AS p50_ms,
+    quantileExact(0.95)(duration_nano / 1e6)                                         AS p95_ms,
+    quantileExact(0.99)(duration_nano / 1e6)                                         AS p99_ms
 FROM apm.spans
 WHERE service_name = ?
-  AND start_time >= now() - INTERVAL ? SECOND
+  AND fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
 GROUP BY ts
 ORDER BY ts ASC
 `
@@ -259,16 +258,16 @@ func ListOperations(
 
 	const query = `
 SELECT
-    operation_name,
-    count()                                          AS total_requests,
-    countIf(status_code = 2)                         AS error_count,
-    quantileExact(0.5)(duration_ns / 1e6)            AS p50_ms,
-    quantileExact(0.95)(duration_ns / 1e6)           AS p95_ms,
-    quantileExact(0.99)(duration_ns / 1e6)           AS p99_ms
+    name                                                  AS operation_name,
+    count()                                               AS total_requests,
+    countIf(status_code = 2)                              AS error_count,
+    quantileExact(0.5)(duration_nano / 1e6)               AS p50_ms,
+    quantileExact(0.95)(duration_nano / 1e6)              AS p95_ms,
+    quantileExact(0.99)(duration_nano / 1e6)              AS p99_ms
 FROM apm.spans
 WHERE service_name = ?
-  AND start_time >= now() - INTERVAL ? SECOND
-GROUP BY operation_name
+  AND fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
+GROUP BY name
 ORDER BY total_requests DESC
 LIMIT 50
 `
