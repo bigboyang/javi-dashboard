@@ -66,6 +66,16 @@ func main() {
 		// GET /api/v1/metrics/series  — time-series for a specific metric
 		r.Get("/metrics/names", handler.GetMetricNames)
 		r.Get("/metrics/series", handler.GetMetricSeries)
+
+		// Phase 6: Alerting
+		// GET    /api/v1/alerts/rules       — list all alert rules
+		// POST   /api/v1/alerts/rules       — create a new alert rule
+		// DELETE /api/v1/alerts/rules/{id}  — delete an alert rule
+		// GET    /api/v1/alerts/status      — evaluate rules against current metrics
+		r.Get("/alerts/rules", handler.GetAlertRules)
+		r.Post("/alerts/rules", handler.CreateAlertRule)
+		r.Delete("/alerts/rules/{id}", handler.DeleteAlertRule)
+		r.Get("/alerts/status", handler.GetAlertStatus)
 	})
 
 	port := os.Getenv("SERVER_PORT")
@@ -81,7 +91,7 @@ func main() {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

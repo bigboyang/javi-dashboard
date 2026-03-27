@@ -146,3 +146,48 @@ export interface MetricSeriesResponse {
   step: string
   series: MetricPoint[]
 }
+
+export type AlertMetric = 'error_rate' | 'p95_ms' | 'p99_ms' | 'rate'
+export type AlertCondition = 'gt' | 'lt'
+export type AlertWindow = '5m' | '15m' | '1h' | '6h' | '24h'
+
+export interface AlertRule {
+  id: string
+  name: string
+  service: string    // "" means all services
+  metric: AlertMetric
+  condition: AlertCondition
+  threshold: number
+  window: AlertWindow
+  enabled: boolean
+  created_at: string
+}
+
+export interface AlertFiring {
+  rule_id: string
+  rule_name: string
+  service: string
+  metric: AlertMetric
+  condition: AlertCondition
+  threshold: number
+  current_value: number
+  fired_at: string
+}
+
+export interface AlertRulesResponse {
+  rules: AlertRule[]
+}
+
+export interface AlertStatusResponse {
+  firing: AlertFiring[]
+  evaluated_at: string
+}
+
+export interface CreateAlertRuleRequest {
+  name: string
+  service: string
+  metric: AlertMetric
+  condition: AlertCondition
+  threshold: number
+  window: AlertWindow
+}

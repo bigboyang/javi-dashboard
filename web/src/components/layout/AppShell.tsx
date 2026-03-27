@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { Activity, GitBranch, ScrollText, Network, BarChart2 } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell } from 'lucide-react'
 
-type Page = 'overview' | 'traces' | 'logs' | 'topology' | 'metrics'
+type Page = 'overview' | 'traces' | 'logs' | 'topology' | 'metrics' | 'alerts'
 
 interface NavItem {
   icon: ReactNode
@@ -49,6 +49,12 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
       label: 'Metrics',
       page: 'metrics',
       active: activePage === 'metrics',
+    },
+    {
+      icon: <Bell size={16} />,
+      label: 'Alerts',
+      page: 'alerts',
+      active: activePage === 'alerts',
     },
   ]
 
@@ -103,10 +109,10 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 5
+            Phase 6
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            Custom Metrics
+            Alerting
           </p>
         </div>
       </aside>

@@ -1,4 +1,4 @@
-import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse } from '../types/apm'
+import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse, AlertRulesResponse, AlertStatusResponse, AlertRule, CreateAlertRuleRequest } from '../types/apm'
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -69,4 +69,31 @@ export function fetchMetricSeries(
   const params = new URLSearchParams({ metric, window, step })
   if (service) params.set('service', service)
   return apiFetch<MetricSeriesResponse>(`/api/v1/metrics/series?${params}`)
+}
+
+export function fetchAlertRules(): Promise<AlertRulesResponse> {
+  return apiFetch<AlertRulesResponse>('/api/v1/alerts/rules')
+}
+
+export function fetchAlertStatus(window: string): Promise<AlertStatusResponse> {
+  return apiFetch<AlertStatusResponse>(`/api/v1/alerts/status?window=${encodeURIComponent(window)}`)
+}
+
+export function createAlertRule(req: CreateAlertRuleRequest): Promise<AlertRule> {
+  return fetch('/api/v1/alerts/rules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json() as Promise<AlertRule>
+  })
+}
+
+export function deleteAlertRule(id: string): Promise<void> {
+  return fetch(`/api/v1/alerts/rules/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  }).then((res) => {
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+  })
 }

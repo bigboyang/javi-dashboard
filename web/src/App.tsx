@@ -8,6 +8,7 @@ import { TraceExplorer } from './components/TraceExplorer'
 import { LogExplorer } from './components/LogExplorer'
 import { TopologyExplorer } from './components/TopologyExplorer'
 import { MetricsExplorer } from './components/MetricsExplorer'
+import { AlertExplorer } from './components/AlertExplorer'
 import { fetchServices } from './api/apm'
 import type { TimeWindow } from './types/apm'
 
@@ -115,6 +116,10 @@ function App() {
 
       {page === 'metrics' && (
         <MetricsExplorer services={serviceNames} />
+      )}
+
+      {page === 'alerts' && (
+        <AlertExplorer services={serviceNames} />
       )}
     </AppShell>
   )
