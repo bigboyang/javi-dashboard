@@ -10,17 +10,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-router": "^1.79.0",
-    "zustand": "^5.0.2",
-    "uplot": "^1.6.31",
-    "lucide-react": "^0.468.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.5"
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.5",
+    "uplot": "^1.6.31",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@tanstack/router-plugin": "^1.167.12",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

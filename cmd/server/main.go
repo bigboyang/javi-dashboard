@@ -76,6 +76,16 @@ func main() {
 		r.Post("/alerts/rules", handler.CreateAlertRule)
 		r.Delete("/alerts/rules/{id}", handler.DeleteAlertRule)
 		r.Get("/alerts/status", handler.GetAlertStatus)
+
+		// Phase 7: Forecast Dashboard
+		// GET /api/v1/forecast/red                — RED forecast for all services (60s cache)
+		// GET /api/v1/forecast/service/{name}     — per-service forecast (?metric=all)
+		// GET /api/v1/forecast/capacity           — capacity headroom predictions
+		// GET /api/v1/forecast/anomalies          — SLO burn rate / forecast anomalies (?severity=warn|critical)
+		r.Get("/forecast/red", handler.GetForecastRED)
+		r.Get("/forecast/service/{name}", handler.GetForecastService)
+		r.Get("/forecast/capacity", handler.GetForecastCapacity)
+		r.Get("/forecast/anomalies", handler.GetForecastAnomalies)
 	})
 
 	port := os.Getenv("SERVER_PORT")

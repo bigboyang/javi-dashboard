@@ -1,61 +1,27 @@
 import type { ReactNode } from 'react'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell } from 'lucide-react'
-
-type Page = 'overview' | 'traces' | 'logs' | 'topology' | 'metrics' | 'alerts'
 
 interface NavItem {
   icon: ReactNode
   label: string
-  page: Page | null  // null = disabled
-  active: boolean
+  to: string
 }
-
-export type { Page }
 
 interface AppShellProps {
   children: ReactNode
-  activePage: Page
-  onPageChange: (page: Page) => void
 }
 
-export function AppShell({ children, activePage, onPageChange }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
+  const { location } = useRouterState()
+
   const navItems: NavItem[] = [
-    {
-      icon: <Activity size={16} />,
-      label: 'Overview',
-      page: 'overview',
-      active: activePage === 'overview',
-    },
-    {
-      icon: <GitBranch size={16} />,
-      label: 'Traces',
-      page: 'traces',
-      active: activePage === 'traces',
-    },
-    {
-      icon: <ScrollText size={16} />,
-      label: 'Logs',
-      page: 'logs',
-      active: activePage === 'logs',
-    },
-    {
-      icon: <Network size={16} />,
-      label: 'Topology',
-      page: 'topology',
-      active: activePage === 'topology',
-    },
-    {
-      icon: <BarChart2 size={16} />,
-      label: 'Metrics',
-      page: 'metrics',
-      active: activePage === 'metrics',
-    },
-    {
-      icon: <Bell size={16} />,
-      label: 'Alerts',
-      page: 'alerts',
-      active: activePage === 'alerts',
-    },
+    { icon: <Activity size={16} />, label: 'Overview', to: '/' },
+    { icon: <GitBranch size={16} />, label: 'Traces', to: '/traces' },
+    { icon: <ScrollText size={16} />, label: 'Logs', to: '/logs' },
+    { icon: <Network size={16} />, label: 'Topology', to: '/topology' },
+    { icon: <BarChart2 size={16} />, label: 'Metrics', to: '/metrics' },
+    { icon: <Bell size={16} />, label: 'Alerts', to: '/alerts' },
   ]
 
   return (
@@ -99,9 +65,8 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
               key={item.label}
               icon={item.icon}
               label={item.label}
-              active={item.active}
-              disabled={item.page === null}
-              onClick={() => item.page && onPageChange(item.page)}
+              to={item.to}
+              active={location.pathname === item.to}
             />
           ))}
         </nav>
@@ -126,51 +91,26 @@ export function AppShell({ children, activePage, onPageChange }: AppShellProps) 
 function NavButton({
   icon,
   label,
+  to,
   active,
-  disabled,
-  onClick,
 }: {
   icon: ReactNode
   label: string
+  to: string
   active: boolean
-  disabled: boolean
-  onClick: () => void
 }) {
-  const baseStyle: React.CSSProperties = {
-    color: disabled
-      ? 'var(--muted)'
-      : active
-        ? 'var(--text)'
-        : 'var(--muted)',
-    background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
-    opacity: disabled ? 0.4 : 1,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }
-
   return (
-    <div
+    <Link
+      to={to}
       className="flex items-center gap-2.5 px-3 py-2 rounded text-xs font-medium select-none transition-colors"
-      style={baseStyle}
-      aria-disabled={disabled}
-      role="menuitem"
-      onClick={disabled ? undefined : onClick}
+      style={{
+        color: active ? 'var(--text)' : 'var(--muted)',
+        background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
+        textDecoration: 'none',
+      }}
     >
       {icon}
       <span>{label}</span>
-      {disabled && (
-        <span
-          className="ml-auto text-xs rounded px-1"
-          style={{
-            fontSize: '9px',
-            color: 'var(--muted)',
-            background: 'var(--border)',
-            opacity: 0.7,
-            letterSpacing: '0.05em',
-          }}
-        >
-          SOON
-        </span>
-      )}
-    </div>
+    </Link>
   )
 }

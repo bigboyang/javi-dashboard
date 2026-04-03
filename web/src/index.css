@@ -12,6 +12,15 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+
+  /* Phase 7: Forecast / AI-predicted data */
+  --forecast: #a78bfa;
+  --forecast-band: rgba(167, 139, 250, 0.15);
+
+  /* Phase 8: Service health score */
+  --health-ok: #10b981;
+  --health-warn: #f59e0b;
+  --health-critical: #ef4444;
 }
 
 body {
