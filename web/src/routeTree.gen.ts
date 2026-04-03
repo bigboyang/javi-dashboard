@@ -13,6 +13,7 @@ import { Route as TracesRouteImport } from './routes/traces'
 import { Route as TopologyRouteImport } from './routes/topology'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as LogsRouteImport } from './routes/logs'
+import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const LogsRoute = LogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForecastRoute = ForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlertsRoute = AlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/forecast': typeof ForecastRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/forecast': typeof ForecastRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/forecast': typeof ForecastRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
@@ -74,13 +83,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/alerts' | '/logs' | '/metrics' | '/topology' | '/traces'
+  fullPaths:
+    | '/'
+    | '/alerts'
+    | '/forecast'
+    | '/logs'
+    | '/metrics'
+    | '/topology'
+    | '/traces'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alerts' | '/logs' | '/metrics' | '/topology' | '/traces'
+  to:
+    | '/'
+    | '/alerts'
+    | '/forecast'
+    | '/logs'
+    | '/metrics'
+    | '/topology'
+    | '/traces'
   id:
     | '__root__'
     | '/'
     | '/alerts'
+    | '/forecast'
     | '/logs'
     | '/metrics'
     | '/topology'
@@ -90,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlertsRoute: typeof AlertsRoute
+  ForecastRoute: typeof ForecastRoute
   LogsRoute: typeof LogsRoute
   MetricsRoute: typeof MetricsRoute
   TopologyRoute: typeof TopologyRoute
@@ -126,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forecast': {
+      id: '/forecast'
+      path: '/forecast'
+      fullPath: '/forecast'
+      preLoaderRoute: typeof ForecastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/alerts': {
       id: '/alerts'
       path: '/alerts'
@@ -146,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlertsRoute: AlertsRoute,
+  ForecastRoute: ForecastRoute,
   LogsRoute: LogsRoute,
   MetricsRoute: MetricsRoute,
   TopologyRoute: TopologyRoute,

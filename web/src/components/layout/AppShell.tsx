@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp } from 'lucide-react'
 
 interface NavItem {
   icon: ReactNode
@@ -22,6 +22,7 @@ export function AppShell({ children }: AppShellProps) {
     { icon: <Network size={16} />, label: 'Topology', to: '/topology' },
     { icon: <BarChart2 size={16} />, label: 'Metrics', to: '/metrics' },
     { icon: <Bell size={16} />, label: 'Alerts', to: '/alerts' },
+    { icon: <TrendingUp size={16} />, label: 'Forecast', to: '/forecast' },
   ]
 
   return (
@@ -77,7 +78,7 @@ export function AppShell({ children }: AppShellProps) {
             Phase 6
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            Alerting
+            Forecast
           </p>
         </div>
       </aside>
