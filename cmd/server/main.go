@@ -106,6 +106,9 @@ func main() {
 		// GET /api/v1/dependency/{service}/causes — root causes for a service
 		r.Get("/dependency/graph", handler.GetDependencyGraph)
 		r.Get("/dependency/{service}/causes", handler.GetDependencyCauses)
+
+		// POST /api/v1/rag/search — natural-language RAG error search (proxies to javi-collector)
+		r.Post("/rag/search", handler.RAGSearch)
 	})
 
 	port := os.Getenv("SERVER_PORT")

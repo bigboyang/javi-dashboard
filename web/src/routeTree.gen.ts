@@ -11,10 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TracesRouteImport } from './routes/traces'
 import { Route as TopologyRouteImport } from './routes/topology'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as JvmRouteImport } from './routes/jvm'
 import { Route as ForecastRouteImport } from './routes/forecast'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CompareRouteImport } from './routes/compare'
+import { Route as CausalityRouteImport } from './routes/causality'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AiopsRouteImport } from './routes/aiops'
 import { Route as IndexRouteImport } from './routes/index'
@@ -28,6 +32,11 @@ const TracesRoute = TracesRouteImport.update({
 const TopologyRoute = TopologyRouteImport.update({
   id: '/topology',
   path: '/topology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetricsRoute = MetricsRouteImport.update({
@@ -48,6 +57,21 @@ const JvmRoute = JvmRouteImport.update({
 const ForecastRoute = ForecastRouteImport.update({
   id: '/forecast',
   path: '/forecast',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CausalityRoute = CausalityRouteImport.update({
+  id: '/causality',
+  path: '/causality',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlertsRoute = AlertsRouteImport.update({
@@ -75,10 +99,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/causality': typeof CausalityRoute
+  '/compare': typeof CompareRoute
+  '/dashboard': typeof DashboardRoute
   '/forecast': typeof ForecastRoute
   '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/search': typeof SearchRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -87,10 +115,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/causality': typeof CausalityRoute
+  '/compare': typeof CompareRoute
+  '/dashboard': typeof DashboardRoute
   '/forecast': typeof ForecastRoute
   '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/search': typeof SearchRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -100,10 +132,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/causality': typeof CausalityRoute
+  '/compare': typeof CompareRoute
+  '/dashboard': typeof DashboardRoute
   '/forecast': typeof ForecastRoute
   '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/search': typeof SearchRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -114,10 +150,14 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/causality'
+    | '/compare'
+    | '/dashboard'
     | '/forecast'
     | '/jvm'
     | '/logs'
     | '/metrics'
+    | '/search'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -126,10 +166,14 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/causality'
+    | '/compare'
+    | '/dashboard'
     | '/forecast'
     | '/jvm'
     | '/logs'
     | '/metrics'
+    | '/search'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -138,10 +182,14 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/causality'
+    | '/compare'
+    | '/dashboard'
     | '/forecast'
     | '/jvm'
     | '/logs'
     | '/metrics'
+    | '/search'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -151,10 +199,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiopsRoute: typeof AiopsRoute
   AlertsRoute: typeof AlertsRoute
+  CausalityRoute: typeof CausalityRoute
+  CompareRoute: typeof CompareRoute
+  DashboardRoute: typeof DashboardRoute
   ForecastRoute: typeof ForecastRoute
   JvmRoute: typeof JvmRoute
   LogsRoute: typeof LogsRoute
   MetricsRoute: typeof MetricsRoute
+  SearchRoute: typeof SearchRoute
   TopologyRoute: typeof TopologyRoute
   TracesRoute: typeof TracesRoute
   ServicesNameRoute: typeof ServicesNameRoute
@@ -174,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/topology'
       fullPath: '/topology'
       preLoaderRoute: typeof TopologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/metrics': {
@@ -202,6 +261,27 @@ declare module '@tanstack/react-router' {
       path: '/forecast'
       fullPath: '/forecast'
       preLoaderRoute: typeof ForecastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/causality': {
+      id: '/causality'
+      path: '/causality'
+      fullPath: '/causality'
+      preLoaderRoute: typeof CausalityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alerts': {
@@ -239,10 +319,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiopsRoute: AiopsRoute,
   AlertsRoute: AlertsRoute,
+  CausalityRoute: CausalityRoute,
+  CompareRoute: CompareRoute,
+  DashboardRoute: DashboardRoute,
   ForecastRoute: ForecastRoute,
   JvmRoute: JvmRoute,
   LogsRoute: LogsRoute,
   MetricsRoute: MetricsRoute,
+  SearchRoute: SearchRoute,
   TopologyRoute: TopologyRoute,
   TracesRoute: TracesRoute,
   ServicesNameRoute: ServicesNameRoute,

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee, Search, Share2, GitCompare, LayoutDashboard } from 'lucide-react'
 
 interface NavItem {
   icon: ReactNode
@@ -25,6 +25,10 @@ export function AppShell({ children }: AppShellProps) {
     { icon: <TrendingUp size={16} />, label: 'Forecast', to: '/forecast' },
     { icon: <Cpu size={16} />, label: 'AIOps', to: '/aiops' },
     { icon: <Coffee size={16} />, label: 'JVM', to: '/jvm' },
+    { icon: <Share2 size={16} />, label: 'Causality', to: '/causality' },
+    { icon: <Search size={16} />, label: 'Search', to: '/search' },
+    { icon: <GitCompare size={16} />, label: 'Compare', to: '/compare' },
+    { icon: <LayoutDashboard size={16} />, label: 'Dashboard', to: '/dashboard' },
   ]
 
   return (
@@ -77,10 +81,10 @@ export function AppShell({ children }: AppShellProps) {
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 8
+            Phase 9
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            AIOps
+            Advanced
           </p>
         </div>
       </aside>
