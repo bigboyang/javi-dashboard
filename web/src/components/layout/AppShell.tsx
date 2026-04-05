@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee } from 'lucide-react'
 
 interface NavItem {
   icon: ReactNode
@@ -23,6 +23,8 @@ export function AppShell({ children }: AppShellProps) {
     { icon: <BarChart2 size={16} />, label: 'Metrics', to: '/metrics' },
     { icon: <Bell size={16} />, label: 'Alerts', to: '/alerts' },
     { icon: <TrendingUp size={16} />, label: 'Forecast', to: '/forecast' },
+    { icon: <Cpu size={16} />, label: 'AIOps', to: '/aiops' },
+    { icon: <Coffee size={16} />, label: 'JVM', to: '/jvm' },
   ]
 
   return (
@@ -75,10 +77,10 @@ export function AppShell({ children }: AppShellProps) {
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 6
+            Phase 8
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-            Forecast
+            AIOps
           </p>
         </div>
       </aside>

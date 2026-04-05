@@ -13,9 +13,12 @@ import { Route as TracesRouteImport } from './routes/traces'
 import { Route as TopologyRouteImport } from './routes/topology'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as LogsRouteImport } from './routes/logs'
+import { Route as JvmRouteImport } from './routes/jvm'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as AlertsRouteImport } from './routes/alerts'
+import { Route as AiopsRouteImport } from './routes/aiops'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ServicesNameRouteImport } from './routes/services.$name'
 
 const TracesRoute = TracesRouteImport.update({
   id: '/traces',
@@ -37,6 +40,11 @@ const LogsRoute = LogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JvmRoute = JvmRouteImport.update({
+  id: '/jvm',
+  path: '/jvm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForecastRoute = ForecastRouteImport.update({
   id: '/forecast',
   path: '/forecast',
@@ -47,78 +55,109 @@ const AlertsRoute = AlertsRouteImport.update({
   path: '/alerts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiopsRoute = AiopsRouteImport.update({
+  id: '/aiops',
+  path: '/aiops',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServicesNameRoute = ServicesNameRouteImport.update({
+  id: '/services/$name',
+  path: '/services/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
   '/forecast': typeof ForecastRoute
+  '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
+  '/services/$name': typeof ServicesNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
   '/forecast': typeof ForecastRoute
+  '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
+  '/services/$name': typeof ServicesNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
   '/forecast': typeof ForecastRoute
+  '/jvm': typeof JvmRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
+  '/services/$name': typeof ServicesNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aiops'
     | '/alerts'
     | '/forecast'
+    | '/jvm'
     | '/logs'
     | '/metrics'
     | '/topology'
     | '/traces'
+    | '/services/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aiops'
     | '/alerts'
     | '/forecast'
+    | '/jvm'
     | '/logs'
     | '/metrics'
     | '/topology'
     | '/traces'
+    | '/services/$name'
   id:
     | '__root__'
     | '/'
+    | '/aiops'
     | '/alerts'
     | '/forecast'
+    | '/jvm'
     | '/logs'
     | '/metrics'
     | '/topology'
     | '/traces'
+    | '/services/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiopsRoute: typeof AiopsRoute
   AlertsRoute: typeof AlertsRoute
   ForecastRoute: typeof ForecastRoute
+  JvmRoute: typeof JvmRoute
   LogsRoute: typeof LogsRoute
   MetricsRoute: typeof MetricsRoute
   TopologyRoute: typeof TopologyRoute
   TracesRoute: typeof TracesRoute
+  ServicesNameRoute: typeof ServicesNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jvm': {
+      id: '/jvm'
+      path: '/jvm'
+      fullPath: '/jvm'
+      preLoaderRoute: typeof JvmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forecast': {
       id: '/forecast'
       path: '/forecast'
@@ -165,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aiops': {
+      id: '/aiops'
+      path: '/aiops'
+      fullPath: '/aiops'
+      preLoaderRoute: typeof AiopsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -172,17 +225,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/services/$name': {
+      id: '/services/$name'
+      path: '/services/$name'
+      fullPath: '/services/$name'
+      preLoaderRoute: typeof ServicesNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiopsRoute: AiopsRoute,
   AlertsRoute: AlertsRoute,
   ForecastRoute: ForecastRoute,
+  JvmRoute: JvmRoute,
   LogsRoute: LogsRoute,
   MetricsRoute: MetricsRoute,
   TopologyRoute: TopologyRoute,
   TracesRoute: TracesRoute,
+  ServicesNameRoute: ServicesNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

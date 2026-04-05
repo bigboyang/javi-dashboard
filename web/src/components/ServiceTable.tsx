@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ExternalLink } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { fetchServices } from '../api/apm'
 import type { ServiceSummary, TimeWindow } from '../types/apm'
 
@@ -150,6 +151,15 @@ function ServiceRow({ service, selected, onClick }: ServiceRowProps) {
           <span style={{ color: 'var(--text)', fontFamily: 'inherit' }}>
             {service.name}
           </span>
+          <Link
+            to="/services/$name"
+            params={{ name: service.name }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--muted)', lineHeight: 0, textDecoration: 'none' }}
+            title="Service detail"
+          >
+            <ExternalLink size={10} />
+          </Link>
         </div>
       </Td>
 

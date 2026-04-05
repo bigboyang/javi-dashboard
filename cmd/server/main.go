@@ -86,6 +86,26 @@ func main() {
 		r.Get("/forecast/service/{name}", handler.GetForecastService)
 		r.Get("/forecast/capacity", handler.GetForecastCapacity)
 		r.Get("/forecast/anomalies", handler.GetForecastAnomalies)
+
+		// Phase 8: AIOps Dashboard
+		// GET /api/v1/aiops/anomalies             — detected anomalies from apm.anomalies (?window&service&severity)
+		// GET /api/v1/aiops/rca                   — RCA reports from apm.rca_reports (?window&service)
+		r.Get("/aiops/anomalies", handler.GetAIOpsAnomalies)
+		r.Get("/aiops/rca", handler.GetAIOpsRCA)
+
+		// Phase 8: JVM Analytics (proxy → javi-forecast /api/jvm/*)
+		// GET /api/v1/jvm/services                — list services with JVM data
+		// GET /api/v1/jvm/health/{service}        — latest JVM snapshot
+		// GET /api/v1/jvm/history/{service}       — JVM history (?window_minutes=60)
+		r.Get("/jvm/services", handler.GetJVMServices)
+		r.Get("/jvm/health/{service}", handler.GetJVMHealth)
+		r.Get("/jvm/history/{service}", handler.GetJVMHistory)
+
+		// Phase 8: Granger Causality (proxy → javi-forecast /dependency/*)
+		// GET /api/v1/dependency/graph            — all causal edges
+		// GET /api/v1/dependency/{service}/causes — root causes for a service
+		r.Get("/dependency/graph", handler.GetDependencyGraph)
+		r.Get("/dependency/{service}/causes", handler.GetDependencyCauses)
 	})
 
 	port := os.Getenv("SERVER_PORT")
