@@ -12,12 +12,14 @@ import (
 )
 
 // forecastBaseURL is the javi-forecast service address.
-// Override via FORECAST_URL env var (default: http://localhost:8001).
+// Override via FORECAST_URL env var.
+// K8s default: http://javi-forecast.apm.svc.cluster.local:8080
+// Local dev: set FORECAST_URL=http://localhost:8080
 var forecastBaseURL = func() string {
 	if v := os.Getenv("FORECAST_URL"); v != "" {
 		return v
 	}
-	return "http://localhost:8001"
+	return "http://javi-forecast.apm.svc.cluster.local:8080"
 }()
 
 // cacheEntry holds a cached forecast response with an expiry timestamp.

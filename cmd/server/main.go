@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -11,7 +15,11 @@ import (
 
 	"github.com/kkc/javi-dashboard/internal/ch"
 	"github.com/kkc/javi-dashboard/internal/handler"
+	"github.com/kkc/javi-dashboard/internal/repository"
 )
+
+//go:embed web/dist
+var webDist embed.FS
 
 func main() {
 	// .env 파일 로드 (없어도 무시)
@@ -22,6 +30,11 @@ func main() {
 		log.Fatalf("failed to connect clickhouse: %v", err)
 	}
 	log.Println("clickhouse connected")
+
+	// Alert rules — ensure table and preload from ClickHouse
+	if err := repository.InitAlertRules(context.Background()); err != nil {
+		log.Printf("alert_rules init warning (non-fatal): %v", err)
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -38,9 +51,6 @@ func main() {
 		})
 
 		// Phase 1: Service Overview RED Dashboard
-		// GET /api/v1/services                          — all services, aggregate RED
-		// GET /api/v1/services/{service}/red            — time-series RED for one service
-		// GET /api/v1/services/{service}/operations     — top operations for one service
 		r.Get("/services", handler.GetServices)
 		r.Route("/services/{service}", func(r chi.Router) {
 			r.Get("/red", handler.GetREDSeries)
@@ -48,68 +58,55 @@ func main() {
 		})
 
 		// Phase 2: Trace Explorer
-		// GET /api/v1/traces                  — recent trace list with optional service filter
-		// GET /api/v1/traces/{traceId}         — all spans for a trace (waterfall)
 		r.Get("/traces", handler.GetTraces)
 		r.Get("/traces/{traceId}", handler.GetTraceDetail)
 
 		// Phase 3: Log Explorer
-		// GET /api/v1/logs  — recent log entries with optional service/level/search filters
 		r.Get("/logs", handler.GetLogs)
 
 		// Phase 4: Service Topology
-		// GET /api/v1/topology  — service dependency graph derived from trace spans
 		r.Get("/topology", handler.GetTopology)
 
 		// Phase 5: Custom Metrics
-		// GET /api/v1/metrics/names   — list metric instruments with optional service filter
-		// GET /api/v1/metrics/series  — time-series for a specific metric
 		r.Get("/metrics/names", handler.GetMetricNames)
 		r.Get("/metrics/series", handler.GetMetricSeries)
 
 		// Phase 6: Alerting
-		// GET    /api/v1/alerts/rules       — list all alert rules
-		// POST   /api/v1/alerts/rules       — create a new alert rule
-		// DELETE /api/v1/alerts/rules/{id}  — delete an alert rule
-		// GET    /api/v1/alerts/status      — evaluate rules against current metrics
 		r.Get("/alerts/rules", handler.GetAlertRules)
 		r.Post("/alerts/rules", handler.CreateAlertRule)
+		r.Patch("/alerts/rules/{id}", handler.PatchAlertRule)
 		r.Delete("/alerts/rules/{id}", handler.DeleteAlertRule)
 		r.Get("/alerts/status", handler.GetAlertStatus)
 
 		// Phase 7: Forecast Dashboard
-		// GET /api/v1/forecast/red                — RED forecast for all services (60s cache)
-		// GET /api/v1/forecast/service/{name}     — per-service forecast (?metric=all)
-		// GET /api/v1/forecast/capacity           — capacity headroom predictions
-		// GET /api/v1/forecast/anomalies          — SLO burn rate / forecast anomalies (?severity=warn|critical)
 		r.Get("/forecast/red", handler.GetForecastRED)
 		r.Get("/forecast/service/{name}", handler.GetForecastService)
 		r.Get("/forecast/capacity", handler.GetForecastCapacity)
 		r.Get("/forecast/anomalies", handler.GetForecastAnomalies)
 
 		// Phase 8: AIOps Dashboard
-		// GET /api/v1/aiops/anomalies             — detected anomalies from apm.anomalies (?window&service&severity)
-		// GET /api/v1/aiops/rca                   — RCA reports from apm.rca_reports (?window&service)
 		r.Get("/aiops/anomalies", handler.GetAIOpsAnomalies)
 		r.Get("/aiops/rca", handler.GetAIOpsRCA)
 
-		// Phase 8: JVM Analytics (proxy → javi-forecast /api/jvm/*)
-		// GET /api/v1/jvm/services                — list services with JVM data
-		// GET /api/v1/jvm/health/{service}        — latest JVM snapshot
-		// GET /api/v1/jvm/history/{service}       — JVM history (?window_minutes=60)
+		// Phase 8: JVM Analytics (proxy → javi-forecast)
 		r.Get("/jvm/services", handler.GetJVMServices)
 		r.Get("/jvm/health/{service}", handler.GetJVMHealth)
 		r.Get("/jvm/history/{service}", handler.GetJVMHistory)
 
-		// Phase 8: Granger Causality (proxy → javi-forecast /dependency/*)
-		// GET /api/v1/dependency/graph            — all causal edges
-		// GET /api/v1/dependency/{service}/causes — root causes for a service
+		// Phase 8: Granger Causality (proxy → javi-forecast)
 		r.Get("/dependency/graph", handler.GetDependencyGraph)
 		r.Get("/dependency/{service}/causes", handler.GetDependencyCauses)
 
-		// POST /api/v1/rag/search — natural-language RAG error search (proxies to javi-collector)
+		// RAG search (proxies to javi-collector)
 		r.Post("/rag/search", handler.RAGSearch)
 	})
+
+	// Serve React SPA — unknown paths fall back to index.html for client-side routing
+	webFS, err := fs.Sub(webDist, "web/dist")
+	if err != nil {
+		log.Fatalf("failed to create web FS: %v", err)
+	}
+	r.Handle("/*", spaHandler(webFS))
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
@@ -121,10 +118,56 @@ func main() {
 	}
 }
 
+// spaHandler serves static files from webFS; unknown paths return index.html
+// so the React router can handle client-side navigation.
+func spaHandler(webFS fs.FS) http.HandlerFunc {
+	fileServer := http.FileServer(http.FS(webFS))
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if _, err := fs.Stat(webFS, path[1:]); err != nil {
+			r2 := *r
+			r2.URL = *&r.URL
+			r2.URL.Path = "/"
+			fileServer.ServeHTTP(w, &r2)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	}
+}
+
+// corsMiddleware sets CORS headers. Origins are controlled by CORS_ALLOWED_ORIGINS
+// (comma-separated). Defaults to "*" for local development.
 func corsMiddleware(next http.Handler) http.Handler {
+	rawOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if rawOrigins == "" {
+		rawOrigins = "*"
+	}
+	origins := strings.Split(rawOrigins, ",")
+	for i, o := range origins {
+		origins[i] = strings.TrimSpace(o)
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		origin := r.Header.Get("Origin")
+		allowed := rawOrigins == "*"
+		if !allowed {
+			for _, o := range origins {
+				if o == origin {
+					allowed = true
+					break
+				}
+			}
+		}
+
+		if allowed {
+			if rawOrigins == "*" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Add("Vary", "Origin")
+			}
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

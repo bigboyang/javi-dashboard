@@ -1,8 +1,16 @@
+FROM node:20-alpine AS frontend
+WORKDIR /web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+COPY --from=frontend /web/dist ./web/dist
 RUN go build -o /bin/javi-dashboard ./cmd/server
 
 FROM alpine:3.20

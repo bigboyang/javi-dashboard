@@ -5,46 +5,52 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 )
 
-// collectorBaseURL is the javi-collector HTTP address.
-// Override via COLLECTOR_URL env var (default: http://localhost:4318).
-var collectorBaseURL = func() string {
-	if v := os.Getenv("COLLECTOR_URL"); v != "" {
-		return v
-	}
-	return "http://localhost:4318"
-}()
-
-// RAGSearch proxies a natural-language error search to javi-collector's
-// /api/collector/search endpoint.
+// RAGSearch proxies a natural-language log search to javi-forecast's
+// /api/rag/logs/search endpoint.
 //
 //	POST /api/v1/rag/search
-//	body: {"query":"...","service":"...","from_ms":0,"limit":10}
+//	body: {"query":"...","service":"...","limit":10}
+//
+// Maps dashboard fields to forecast fields:
+//
+//	query   → question
+//	service → service_name
+//	limit   → top_k
 func RAGSearch(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "read body failed")
 		return
 	}
 
-	// Validate: query field must be present
-	var req struct {
-		Query string `json:"query"`
+	var in struct {
+		Query   string `json:"query"`
+		Service string `json:"service"`
+		Limit   int    `json:"limit"`
 	}
-	if err := json.Unmarshal(body, &req); err != nil || req.Query == "" {
+	if err := json.Unmarshal(body, &in); err != nil || in.Query == "" {
 		writeError(w, http.StatusBadRequest, "query field required")
+		return
+	}
+	topK := in.Limit
+	if topK <= 0 {
+		topK = 10
+	}
+
+	forecBody, err := json.Marshal(map[string]any{
+		"question":     in.Query,
+		"service_name": in.Service,
+		"top_k":        topK,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "build request failed")
 		return
 	}
 
 	upstream, err := http.NewRequestWithContext(r.Context(), http.MethodPost,
-		collectorBaseURL+"/api/collector/search", bytes.NewReader(body))
+		forecastBaseURL+"/api/rag/logs/search", bytes.NewReader(forecBody))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "build request failed")
 		return
@@ -53,7 +59,7 @@ func RAGSearch(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := http.DefaultClient.Do(upstream)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "collector unreachable: "+err.Error())
+		writeError(w, http.StatusBadGateway, "forecast unreachable: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()

@@ -65,3 +65,11 @@ type CreateAlertRuleRequest struct {
 	Threshold float64        `json:"threshold"`
 	Window    string         `json:"window"`
 }
+
+// UpdateAlertRuleRequest is the parsed body for PATCH /api/v1/alerts/rules/{id}.
+// All fields are optional; only non-nil fields are applied.
+type UpdateAlertRuleRequest struct {
+	Name      *string  `json:"name,omitempty"`
+	Enabled   *bool    `json:"enabled,omitempty"`
+	Threshold *float64 `json:"threshold,omitempty"`
+}

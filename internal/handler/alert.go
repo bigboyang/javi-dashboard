@@ -73,6 +73,46 @@ func CreateAlertRule(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, rule)
 }
 
+// PatchAlertRule handles PATCH /api/v1/alerts/rules/{id}.
+// Allows partial updates: enabled flag, threshold, and name.
+func PatchAlertRule(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "rule id is required")
+		return
+	}
+
+	var req model.UpdateAlertRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			writeError(w, http.StatusBadRequest, "name must not be empty")
+			return
+		}
+		if len(name) > 100 {
+			writeError(w, http.StatusBadRequest, "name too long: max 100 characters")
+			return
+		}
+		req.Name = &name
+	}
+	if req.Threshold != nil && *req.Threshold < 0 {
+		writeError(w, http.StatusBadRequest, "threshold must be >= 0")
+		return
+	}
+
+	rule, ok := repository.UpdateAlertRule(id, req)
+	if !ok {
+		writeError(w, http.StatusNotFound, "rule not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, rule)
+}
+
 // DeleteAlertRule handles DELETE /api/v1/alerts/rules/{id}.
 func DeleteAlertRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

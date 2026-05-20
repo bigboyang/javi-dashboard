@@ -325,7 +325,7 @@ type traceSummaryRow struct {
 	RootOperation string
 	StartTime     time.Time
 	DurationMs    float64
-	StatusCode    uint8
+	StatusCode    int32 // ClickHouse Int32
 	SpanCount     uint64
 }
 
@@ -355,7 +355,7 @@ func ListTraces(
 		query = `
 SELECT
     trace_id,
-    argMin(service_name, start_time_nano)                                           AS service_name,
+    argMin(service_name, start_time_nano)                                           AS root_service,
     argMin(name, start_time_nano)                                                   AS root_operation,
     fromUnixTimestamp64Nano(min(start_time_nano))                                   AS start_time,
     (max(start_time_nano + duration_nano) - min(start_time_nano)) / 1e6             AS duration_ms,
@@ -373,7 +373,7 @@ LIMIT ?
 		query = `
 SELECT
     trace_id,
-    argMin(service_name, start_time_nano)                                           AS service_name,
+    argMin(service_name, start_time_nano)                                           AS root_service,
     argMin(name, start_time_nano)                                                   AS root_operation,
     fromUnixTimestamp64Nano(min(start_time_nano))                                   AS start_time,
     (max(start_time_nano + duration_nano) - min(start_time_nano)) / 1e6             AS duration_ms,
@@ -414,7 +414,7 @@ LIMIT ?
 			RootOperation: r.RootOperation,
 			StartTime:     r.StartTime.UTC(),
 			DurationMs:    r.DurationMs,
-			StatusCode:    r.StatusCode,
+			StatusCode:    uint8(r.StatusCode),
 			SpanCount:     r.SpanCount,
 		})
 	}
@@ -437,10 +437,10 @@ type traceSpanRow struct {
 	Name           string
 	StartTime      time.Time
 	DurationMs     float64
-	StatusCode     uint8
+	StatusCode     int32
 	HttpMethod     string
 	HttpStatusCode uint16
-	Attrs          map[string]string
+	Attributes     map[string]string // ClickHouse Map(String, String)
 }
 
 // -----------------------------------------------------------------------
@@ -452,12 +452,11 @@ type logRow struct {
 	TimestampNano  int64
 	ServiceName    string
 	SeverityText   string
-	SeverityNumber uint8
+	SeverityNumber int32 // ClickHouse Int32
 	Body           string
 	TraceID        string
 	SpanID         string
-	ResourceAttrs  map[string]string
-	LogAttrs       map[string]string
+	Attributes     map[string]string // ClickHouse Map(String, String)
 }
 
 // ListLogs returns recent log entries filtered by time window, service name,
@@ -506,8 +505,7 @@ SELECT
     body,
     trace_id,
     span_id,
-    resource_attrs,
-    log_attrs
+    attributes
 FROM apm.logs
 WHERE fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
 		whereExtra + `
@@ -523,8 +521,6 @@ LIMIT ?
 	var results []model.LogEntry
 	for rows.Next() {
 		var r logRow
-		r.ResourceAttrs = make(map[string]string)
-		r.LogAttrs = make(map[string]string)
 		if err := rows.Scan(
 			&r.TimestampNano,
 			&r.ServiceName,
@@ -533,22 +529,24 @@ LIMIT ?
 			&r.Body,
 			&r.TraceID,
 			&r.SpanID,
-			&r.ResourceAttrs,
-			&r.LogAttrs,
+			&r.Attributes,
 		); err != nil {
 			return nil, fmt.Errorf("list logs scan: %w", err)
+		}
+		if r.Attributes == nil {
+			r.Attributes = map[string]string{}
 		}
 		results = append(results, model.LogEntry{
 			TimestampNano:  r.TimestampNano,
 			Timestamp:      time.Unix(0, r.TimestampNano).UTC(),
 			ServiceName:    r.ServiceName,
 			SeverityText:   r.SeverityText,
-			SeverityNumber: r.SeverityNumber,
+			SeverityNumber: uint8(r.SeverityNumber),
 			Body:           r.Body,
 			TraceID:        r.TraceID,
 			SpanID:         r.SpanID,
-			ResourceAttrs:  r.ResourceAttrs,
-			LogAttrs:       r.LogAttrs,
+			ResourceAttrs:  r.Attributes,
+			LogAttrs:       map[string]string{},
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -697,9 +695,9 @@ func ListMetricNames(
 
 	query := `
 SELECT
-    metric_name,
-    any(metric_type)                                   AS metric_type,
-    any(service_name)                                  AS service_name,
+    name                                               AS metric_name,
+    any(type)                                          AS metric_type,
+    any(service_name)                                  AS metric_service,
     count()                                            AS data_points,
     anyLast(value)                                     AS last_value,
     min(value)                                         AS min_value,
@@ -707,8 +705,8 @@ SELECT
 FROM apm.metrics
 WHERE fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
 		whereExtra + `
-GROUP BY metric_name
-ORDER BY metric_name ASC
+GROUP BY name
+ORDER BY name ASC
 `
 	rows, err := ch.DB.Query(ctx, query, args...)
 	if err != nil {
@@ -780,7 +778,7 @@ func GetMetricSeries(
 	}
 
 	// Also fetch metric_type for the response envelope.
-	typeQuery := `SELECT any(metric_type) FROM apm.metrics WHERE metric_name = ? LIMIT 1`
+	typeQuery := `SELECT any(type) FROM apm.metrics WHERE name = ? LIMIT 1`
 	typeRows, err := ch.DB.Query(ctx, typeQuery, metricName)
 	if err != nil {
 		return nil, "", fmt.Errorf("metric type query: %w", err)
@@ -800,7 +798,7 @@ SELECT
     avg(value)   AS avg_val,
     count()      AS cnt
 FROM apm.metrics
-WHERE metric_name = ?
+WHERE name = ?
   AND fromUnixTimestamp64Nano(timestamp_nano) >= now() - INTERVAL ? SECOND` +
 		whereExtra + `
 GROUP BY ts
@@ -860,7 +858,7 @@ SELECT
     status_code,
     http_method,
     http_status_code,
-    span_attrs
+    attributes
 FROM apm.spans
 WHERE trace_id = ?
 ORDER BY start_time_nano ASC
@@ -874,9 +872,6 @@ ORDER BY start_time_nano ASC
 	var results []model.TraceSpan
 	for rows.Next() {
 		var r traceSpanRow
-		if r.Attrs == nil {
-			r.Attrs = make(map[string]string)
-		}
 		if err := rows.Scan(
 			&r.TraceID,
 			&r.SpanID,
@@ -888,9 +883,12 @@ ORDER BY start_time_nano ASC
 			&r.StatusCode,
 			&r.HttpMethod,
 			&r.HttpStatusCode,
-			&r.Attrs,
+			&r.Attributes,
 		); err != nil {
 			return nil, fmt.Errorf("get trace spans scan: %w", err)
+		}
+		if r.Attributes == nil {
+			r.Attributes = map[string]string{}
 		}
 		results = append(results, model.TraceSpan{
 			TraceID:        r.TraceID,
@@ -900,10 +898,10 @@ ORDER BY start_time_nano ASC
 			Name:           r.Name,
 			StartTime:      r.StartTime.UTC(),
 			DurationMs:     r.DurationMs,
-			StatusCode:     r.StatusCode,
+			StatusCode:     uint8(r.StatusCode),
 			HttpMethod:     r.HttpMethod,
 			HttpStatusCode: r.HttpStatusCode,
-			Attrs:          r.Attrs,
+			Attrs:          r.Attributes,
 		})
 	}
 	if err := rows.Err(); err != nil {
