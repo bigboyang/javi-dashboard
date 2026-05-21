@@ -33,3 +33,16 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+
+  trigger-deploy:
+    name: Trigger infra build
+    runs-on: ubuntu-latest
+    needs: [go, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Dispatch build to javi-infra
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          repository: ${{ github.repository_owner }}/javi-infra
+          event-type: build-dashboard
