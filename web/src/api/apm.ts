@@ -1,4 +1,4 @@
-import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse, AlertRulesResponse, AlertStatusResponse, AlertRule, CreateAlertRuleRequest } from '../types/apm'
+import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse, AlertRulesResponse, AlertStatusResponse, AlertRule, CreateAlertRuleRequest, OperationsResponse, UpdateAlertRuleRequest } from '../types/apm'
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -95,5 +95,22 @@ export function deleteAlertRule(id: string): Promise<void> {
     method: 'DELETE',
   }).then((res) => {
     if (!res.ok) throw new Error(`API error ${res.status}`)
+  })
+}
+
+export function fetchServiceOperations(service: string, window: string): Promise<OperationsResponse> {
+  return apiFetch<OperationsResponse>(
+    `/api/v1/services/${encodeURIComponent(service)}/operations?window=${encodeURIComponent(window)}`,
+  )
+}
+
+export function patchAlertRule(id: string, req: UpdateAlertRuleRequest): Promise<AlertRule> {
+  return fetch(`/api/v1/alerts/rules/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json() as Promise<AlertRule>
   })
 }

@@ -35,3 +35,4 @@ web/dist/
 /web/tsconfig.app.json
 /web/tsconfig.json
 /web/tsconfig.node.json
+/backup/*

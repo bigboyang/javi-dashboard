@@ -61,6 +61,9 @@ func main() {
 		r.Get("/traces", handler.GetTraces)
 		r.Get("/traces/{traceId}", handler.GetTraceDetail)
 
+		// Live Stream — real-time unified telemetry tail (spans/logs/metrics)
+		r.Get("/live", handler.GetLive)
+
 		// Phase 3: Log Explorer
 		r.Get("/logs", handler.GetLogs)
 
@@ -99,6 +102,48 @@ func main() {
 
 		// RAG search (proxies to javi-collector)
 		r.Post("/rag/search", handler.RAGSearch)
+
+		// Error Groups — GAP-3
+		r.Get("/errors", handler.GetErrorGroups)
+
+		// Infrastructure / K8s Pod Metrics — GAP-2
+		r.Route("/infra/pods/{service}", func(r chi.Router) {
+			r.Get("/", handler.GetInfraPods)
+			r.Get("/timeseries", handler.GetInfraTimeseries)
+		})
+
+		// Log Volume Chart — GAP-4
+		r.Get("/logs/volume", handler.GetLogVolume)
+
+		// Slow Spans Explorer — GAP-5
+		r.Get("/spans/slow", handler.GetSlowSpans)
+
+		// Database Query Analysis — GAP-4
+		r.Get("/db/queries", handler.GetDbQueries)
+
+		// SLO Dashboard — GAP-6
+		r.Route("/slo", func(r chi.Router) {
+			r.Get("/definitions", handler.GetSLODefinitions)
+			r.Post("/definitions", handler.CreateSLODefinition)
+			r.Delete("/definitions/{service}/{name}", handler.DeleteSLODefinition)
+			r.Get("/status", handler.GetSLOStatus)
+		})
+
+		// Profiling Flame Graph — Nice-to-have
+		r.Get("/profiling/sessions", handler.GetProfilingSessions)
+		r.Get("/profiling/sessions/{id}", handler.GetProfilingPayload)
+
+		// Histogram Percentile — Nice-to-have
+		r.Get("/metrics/histogram", handler.GetHistogram)
+
+		// Service Catalog — Nice-to-have
+		r.Get("/catalog", handler.GetServiceCatalog)
+		r.Post("/catalog", handler.UpsertServiceCatalog)
+		r.Delete("/catalog", handler.DeleteServiceCatalog)
+
+		// Deployment Events — Nice-to-have
+		r.Get("/deployments", handler.GetDeploymentEvents)
+		r.Post("/deployments", handler.CreateDeploymentEvent)
 	})
 
 	// Serve React SPA — unknown paths fall back to index.html for client-side routing

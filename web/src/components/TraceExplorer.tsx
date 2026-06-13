@@ -162,29 +162,38 @@ function SpanDetail({ span, onClose }: { span: TraceSpan; onClose: () => void })
             <span style={{ color: 'var(--text)' }}>{span.http_status_code}</span>
           </>
         )}
-        {attrEntries.length > 0 && (
-          <>
-            <div
-              className="col-span-2 mt-1 mb-0.5 text-xs font-semibold border-t pt-2"
-              style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}
-            >
-              Attributes
-            </div>
-            {attrEntries.map(([k, v]) => (
+        <>
+          <div
+            className="col-span-2 mt-1 mb-0.5 text-xs font-semibold border-t pt-2"
+            style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}
+          >
+            Attributes
+          </div>
+          {attrEntries.length === 0 ? (
+            <span className="col-span-2" style={{ color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>
+              No custom attributes
+            </span>
+          ) : (
+            attrEntries.map(([k, v]) => (
               <>
                 <span key={`k-${k}`} style={{ color: 'var(--muted)' }}>
                   {k}
                 </span>
                 <span
                   key={`v-${k}`}
-                  style={{ color: 'var(--text)', wordBreak: 'break-all' }}
+                  style={{
+                    color: k.startsWith('db.') ? 'var(--accent)' : 'var(--text)',
+                    wordBreak: 'break-all',
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: k.startsWith('db.') || k.startsWith('http.') ? 'monospace' : undefined,
+                  }}
                 >
                   {v}
                 </span>
               </>
-            ))}
-          </>
-        )}
+            ))
+          )}
+        </>
       </div>
     </div>
   )
