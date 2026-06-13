@@ -191,3 +191,26 @@ export interface CreateAlertRuleRequest {
   threshold: number
   window: AlertWindow
 }
+
+export interface OperationSummary {
+  operation: string
+  rate: number
+  error_rate: number
+  p50_ms: number
+  p95_ms: number
+  p99_ms: number
+  total_requests: number
+  error_count: number
+}
+
+export interface OperationsResponse {
+  service: string
+  window: string
+  operations: OperationSummary[]
+}
+
+export interface UpdateAlertRuleRequest {
+  name?: string
+  enabled?: boolean
+  threshold?: number
+}

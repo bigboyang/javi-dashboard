@@ -11,14 +11,24 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TracesRouteImport } from './routes/traces'
 import { Route as TopologyRouteImport } from './routes/topology'
+import { Route as SlowSpansRouteImport } from './routes/slow-spans'
+import { Route as SloRouteImport } from './routes/slo'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ProfilingRouteImport } from './routes/profiling'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as LogsRouteImport } from './routes/logs'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as JvmRouteImport } from './routes/jvm'
+import { Route as InfraRouteImport } from './routes/infra'
+import { Route as HistogramRouteImport } from './routes/histogram'
 import { Route as ForecastRouteImport } from './routes/forecast'
+import { Route as ErrorsRouteImport } from './routes/errors'
+import { Route as DeploymentsRouteImport } from './routes/deployments'
+import { Route as DbQueriesRouteImport } from './routes/db-queries'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as CausalityRouteImport } from './routes/causality'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AiopsRouteImport } from './routes/aiops'
 import { Route as IndexRouteImport } from './routes/index'
@@ -34,9 +44,24 @@ const TopologyRoute = TopologyRouteImport.update({
   path: '/topology',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlowSpansRoute = SlowSpansRouteImport.update({
+  id: '/slow-spans',
+  path: '/slow-spans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SloRoute = SloRouteImport.update({
+  id: '/slo',
+  path: '/slo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfilingRoute = ProfilingRouteImport.update({
+  id: '/profiling',
+  path: '/profiling',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetricsRoute = MetricsRouteImport.update({
@@ -49,14 +74,44 @@ const LogsRoute = LogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JvmRoute = JvmRouteImport.update({
   id: '/jvm',
   path: '/jvm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InfraRoute = InfraRouteImport.update({
+  id: '/infra',
+  path: '/infra',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistogramRoute = HistogramRouteImport.update({
+  id: '/histogram',
+  path: '/histogram',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForecastRoute = ForecastRouteImport.update({
   id: '/forecast',
   path: '/forecast',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErrorsRoute = ErrorsRouteImport.update({
+  id: '/errors',
+  path: '/errors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeploymentsRoute = DeploymentsRouteImport.update({
+  id: '/deployments',
+  path: '/deployments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DbQueriesRoute = DbQueriesRouteImport.update({
+  id: '/db-queries',
+  path: '/db-queries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -72,6 +127,11 @@ const CompareRoute = CompareRouteImport.update({
 const CausalityRoute = CausalityRouteImport.update({
   id: '/causality',
   path: '/causality',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlertsRoute = AlertsRouteImport.update({
@@ -99,14 +159,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
+  '/db-queries': typeof DbQueriesRoute
+  '/deployments': typeof DeploymentsRoute
+  '/errors': typeof ErrorsRoute
   '/forecast': typeof ForecastRoute
+  '/histogram': typeof HistogramRoute
+  '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
+  '/slo': typeof SloRoute
+  '/slow-spans': typeof SlowSpansRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -115,14 +185,24 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
+  '/db-queries': typeof DbQueriesRoute
+  '/deployments': typeof DeploymentsRoute
+  '/errors': typeof ErrorsRoute
   '/forecast': typeof ForecastRoute
+  '/histogram': typeof HistogramRoute
+  '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
+  '/slo': typeof SloRoute
+  '/slow-spans': typeof SlowSpansRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -132,14 +212,24 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
+  '/db-queries': typeof DbQueriesRoute
+  '/deployments': typeof DeploymentsRoute
+  '/errors': typeof ErrorsRoute
   '/forecast': typeof ForecastRoute
+  '/histogram': typeof HistogramRoute
+  '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
+  '/slo': typeof SloRoute
+  '/slow-spans': typeof SlowSpansRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -150,14 +240,24 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/catalog'
     | '/causality'
     | '/compare'
     | '/dashboard'
+    | '/db-queries'
+    | '/deployments'
+    | '/errors'
     | '/forecast'
+    | '/histogram'
+    | '/infra'
     | '/jvm'
+    | '/live'
     | '/logs'
     | '/metrics'
+    | '/profiling'
     | '/search'
+    | '/slo'
+    | '/slow-spans'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -166,14 +266,24 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/catalog'
     | '/causality'
     | '/compare'
     | '/dashboard'
+    | '/db-queries'
+    | '/deployments'
+    | '/errors'
     | '/forecast'
+    | '/histogram'
+    | '/infra'
     | '/jvm'
+    | '/live'
     | '/logs'
     | '/metrics'
+    | '/profiling'
     | '/search'
+    | '/slo'
+    | '/slow-spans'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -182,14 +292,24 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/catalog'
     | '/causality'
     | '/compare'
     | '/dashboard'
+    | '/db-queries'
+    | '/deployments'
+    | '/errors'
     | '/forecast'
+    | '/histogram'
+    | '/infra'
     | '/jvm'
+    | '/live'
     | '/logs'
     | '/metrics'
+    | '/profiling'
     | '/search'
+    | '/slo'
+    | '/slow-spans'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -199,14 +319,24 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiopsRoute: typeof AiopsRoute
   AlertsRoute: typeof AlertsRoute
+  CatalogRoute: typeof CatalogRoute
   CausalityRoute: typeof CausalityRoute
   CompareRoute: typeof CompareRoute
   DashboardRoute: typeof DashboardRoute
+  DbQueriesRoute: typeof DbQueriesRoute
+  DeploymentsRoute: typeof DeploymentsRoute
+  ErrorsRoute: typeof ErrorsRoute
   ForecastRoute: typeof ForecastRoute
+  HistogramRoute: typeof HistogramRoute
+  InfraRoute: typeof InfraRoute
   JvmRoute: typeof JvmRoute
+  LiveRoute: typeof LiveRoute
   LogsRoute: typeof LogsRoute
   MetricsRoute: typeof MetricsRoute
+  ProfilingRoute: typeof ProfilingRoute
   SearchRoute: typeof SearchRoute
+  SloRoute: typeof SloRoute
+  SlowSpansRoute: typeof SlowSpansRoute
   TopologyRoute: typeof TopologyRoute
   TracesRoute: typeof TracesRoute
   ServicesNameRoute: typeof ServicesNameRoute
@@ -228,11 +358,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TopologyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/slow-spans': {
+      id: '/slow-spans'
+      path: '/slow-spans'
+      fullPath: '/slow-spans'
+      preLoaderRoute: typeof SlowSpansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/slo': {
+      id: '/slo'
+      path: '/slo'
+      fullPath: '/slo'
+      preLoaderRoute: typeof SloRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profiling': {
+      id: '/profiling'
+      path: '/profiling'
+      fullPath: '/profiling'
+      preLoaderRoute: typeof ProfilingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/metrics': {
@@ -249,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jvm': {
       id: '/jvm'
       path: '/jvm'
@@ -256,11 +414,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JvmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/infra': {
+      id: '/infra'
+      path: '/infra'
+      fullPath: '/infra'
+      preLoaderRoute: typeof InfraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/histogram': {
+      id: '/histogram'
+      path: '/histogram'
+      fullPath: '/histogram'
+      preLoaderRoute: typeof HistogramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forecast': {
       id: '/forecast'
       path: '/forecast'
       fullPath: '/forecast'
       preLoaderRoute: typeof ForecastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/errors': {
+      id: '/errors'
+      path: '/errors'
+      fullPath: '/errors'
+      preLoaderRoute: typeof ErrorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deployments': {
+      id: '/deployments'
+      path: '/deployments'
+      fullPath: '/deployments'
+      preLoaderRoute: typeof DeploymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/db-queries': {
+      id: '/db-queries'
+      path: '/db-queries'
+      fullPath: '/db-queries'
+      preLoaderRoute: typeof DbQueriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -282,6 +475,13 @@ declare module '@tanstack/react-router' {
       path: '/causality'
       fullPath: '/causality'
       preLoaderRoute: typeof CausalityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alerts': {
@@ -319,14 +519,24 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiopsRoute: AiopsRoute,
   AlertsRoute: AlertsRoute,
+  CatalogRoute: CatalogRoute,
   CausalityRoute: CausalityRoute,
   CompareRoute: CompareRoute,
   DashboardRoute: DashboardRoute,
+  DbQueriesRoute: DbQueriesRoute,
+  DeploymentsRoute: DeploymentsRoute,
+  ErrorsRoute: ErrorsRoute,
   ForecastRoute: ForecastRoute,
+  HistogramRoute: HistogramRoute,
+  InfraRoute: InfraRoute,
   JvmRoute: JvmRoute,
+  LiveRoute: LiveRoute,
   LogsRoute: LogsRoute,
   MetricsRoute: MetricsRoute,
+  ProfilingRoute: ProfilingRoute,
   SearchRoute: SearchRoute,
+  SloRoute: SloRoute,
+  SlowSpansRoute: SlowSpansRoute,
   TopologyRoute: TopologyRoute,
   TracesRoute: TracesRoute,
   ServicesNameRoute: ServicesNameRoute,

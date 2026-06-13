@@ -1,8 +1,8 @@
 import { useState, useId } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
-import { fetchServiceRed } from '../api/apm'
-import type { RedPoint, DetailWindow, ServiceSummary } from '../types/apm'
+import { X, ChevronUp, ChevronDown } from 'lucide-react'
+import { fetchServiceRed, fetchServiceOperations } from '../api/apm'
+import type { RedPoint, DetailWindow, ServiceSummary, OperationSummary } from '../types/apm'
 
 interface ServiceDetailProps {
   serviceName: string
@@ -237,6 +237,148 @@ function MetricBadge({
   )
 }
 
+// --- Operations Table ---
+
+type SortKey = 'operation' | 'rate' | 'error_rate' | 'p50_ms' | 'p95_ms' | 'p99_ms' | 'total_requests'
+
+interface OperationsTableProps {
+  operations: OperationSummary[]
+}
+
+function OperationsTable({ operations }: OperationsTableProps) {
+  const [sortKey, setSortKey] = useState<SortKey>('error_rate')
+  const [sortAsc, setSortAsc] = useState(false)
+
+  const sorted = [...operations].sort((a, b) => {
+    const av = a[sortKey]
+    const bv = b[sortKey]
+    if (typeof av === 'string' && typeof bv === 'string') {
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
+    }
+    return sortAsc
+      ? (av as number) - (bv as number)
+      : (bv as number) - (av as number)
+  })
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortAsc((v) => !v)
+    } else {
+      setSortKey(key)
+      setSortAsc(key === 'operation')
+    }
+  }
+
+  function errorRateColor(rate: number): string {
+    if (rate < 0.01) return 'var(--success)'
+    if (rate < 0.05) return 'var(--warning)'
+    return 'var(--error)'
+  }
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (k !== sortKey) return null
+    return sortAsc
+      ? <ChevronUp size={10} style={{ display: 'inline', marginLeft: 2 }} />
+      : <ChevronDown size={10} style={{ display: 'inline', marginLeft: 2 }} />
+  }
+
+  const columns: { key: SortKey; label: string; align: 'left' | 'right' }[] = [
+    { key: 'operation', label: 'Operation', align: 'left' },
+    { key: 'rate', label: 'Rate', align: 'right' },
+    { key: 'error_rate', label: 'Error%', align: 'right' },
+    { key: 'p50_ms', label: 'P50', align: 'right' },
+    { key: 'p95_ms', label: 'P95', align: 'right' },
+    { key: 'p99_ms', label: 'P99', align: 'right' },
+    { key: 'total_requests', label: 'Requests', align: 'right' },
+  ]
+
+  if (operations.length === 0) {
+    return (
+      <p className="text-xs py-3" style={{ color: 'var(--muted)' }}>
+        No operation data available.
+      </p>
+    )
+  }
+
+  return (
+    <div className="rounded border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+      <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: 'var(--bg)' }}>
+            {columns.map(({ key, label, align }) => (
+              <th
+                key={key}
+                className={`px-3 py-2 font-medium cursor-pointer select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+                style={{
+                  color: sortKey === key ? 'var(--text)' : 'var(--muted)',
+                  borderBottom: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={() => handleSort(key)}
+              >
+                {label}
+                <SortIcon k={key} />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((op) => (
+            <tr
+              key={op.operation}
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
+              <td
+                className="px-3 py-2 font-mono"
+                style={{ color: 'var(--text)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={op.operation}
+              >
+                {op.operation}
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {op.rate.toFixed(2)}/m
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: errorRateColor(op.error_rate), fontVariantNumeric: 'tabular-nums' }}
+              >
+                {(op.error_rate * 100).toFixed(2)}%
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {op.p50_ms.toFixed(1)}ms
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {op.p95_ms.toFixed(1)}ms
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {op.p99_ms.toFixed(1)}ms
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {op.total_requests.toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // --- Main component ---
 
 export function ServiceDetail({ serviceName, summary, onClose }: ServiceDetailProps) {
@@ -245,6 +387,13 @@ export function ServiceDetail({ serviceName, summary, onClose }: ServiceDetailPr
   const { data, isLoading, isError } = useQuery({
     queryKey: ['service-red', serviceName, detailWindow],
     queryFn: () => fetchServiceRed(serviceName, detailWindow, STEP_MAP[detailWindow]),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  })
+
+  const { data: opsData, isLoading: opsLoading } = useQuery({
+    queryKey: ['service-operations', serviceName, detailWindow],
+    queryFn: () => fetchServiceOperations(serviceName, detailWindow),
     refetchInterval: 30_000,
     staleTime: 15_000,
   })
@@ -427,6 +576,29 @@ export function ServiceDetail({ serviceName, summary, onClose }: ServiceDetailPr
             No time-series data available for the selected window.
           </p>
         )}
+
+        {/* Operations breakdown */}
+        <div className="mt-6">
+          <h3
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: 'var(--muted)' }}
+          >
+            Operations
+          </h3>
+          {opsLoading ? (
+            <div className="flex flex-col gap-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-6 rounded animate-pulse"
+                  style={{ background: 'var(--border)' }}
+                />
+              ))}
+            </div>
+          ) : (
+            <OperationsTable operations={opsData?.operations ?? []} />
+          )}
+        </div>
       </div>
     </div>
   )

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, ChevronDown, X, Search } from 'lucide-react'
 import { fetchLogs } from '../api/apm'
+import { fetchLogVolume } from '../api/log_volume'
 import type { LogEntry, TimeWindow, LogLevel } from '../types/apm'
 
 // ---------------------------------------------------------------------------
@@ -145,6 +146,93 @@ function LogDetail({ entry, onClose }: { entry: LogEntry; onClose: () => void })
             ))}
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Log Volume Chart
+// ---------------------------------------------------------------------------
+
+const SEVERITY_COLORS: Record<string, string> = {
+  ERROR: 'var(--health-critical)',
+  FATAL: '#9b1c1c',
+  WARN: '#f59e0b',
+  INFO: 'var(--accent)',
+  DEBUG: 'var(--muted)',
+  TRACE: '#6b7280',
+}
+
+function LogVolumeChart({ window: win, service }: { window: string; service?: string }) {
+  const { data } = useQuery({
+    queryKey: ['logVolume', win, service],
+    queryFn: () => fetchLogVolume(win, service || undefined),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  })
+
+  if (!data || data.buckets.length === 0) return null
+
+  // Group by ts
+  const byTs = new Map<number, Record<string, number>>()
+  for (const b of data.buckets) {
+    if (!byTs.has(b.ts)) byTs.set(b.ts, {})
+    byTs.get(b.ts)![b.severity] = (byTs.get(b.ts)![b.severity] ?? 0) + b.count
+  }
+  const tsList = Array.from(byTs.keys()).sort((a, b) => a - b)
+  const severities = ['ERROR', 'FATAL', 'WARN', 'INFO', 'DEBUG', 'TRACE']
+
+  // Max total per bucket
+  const maxTotal = Math.max(...tsList.map(ts => Object.values(byTs.get(ts)!).reduce((a, b) => a + b, 0)), 1)
+
+  const W = 600
+  const H = 48
+  const barW = Math.max(2, (W / tsList.length) - 1)
+
+  return (
+    <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 4 }}>Log Volume</div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', height: H }}>
+        {tsList.map((ts, i) => {
+          const bucketData = byTs.get(ts)!
+          const total = Object.values(bucketData).reduce((a, b) => a + b, 0)
+          const x = (i / tsList.length) * W
+          const totalH = (total / maxTotal) * H
+          let yOffset = H
+          return (
+            <g key={ts}>
+              {severities.map(sev => {
+                const cnt = bucketData[sev] ?? 0
+                if (cnt === 0) return null
+                const segH = (cnt / maxTotal) * H
+                yOffset -= segH
+                return (
+                  <rect
+                    key={sev}
+                    x={x}
+                    y={yOffset}
+                    width={barW}
+                    height={segH}
+                    fill={SEVERITY_COLORS[sev] ?? 'var(--muted)'}
+                    opacity={0.8}
+                  />
+                )
+              })}
+              {/* invisible for tooltip space */}
+              <title>{new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}: {total} logs</title>
+              <rect x={x} y={H - totalH} width={barW} height={totalH} fill="transparent" />
+            </g>
+          )
+        })}
+      </svg>
+      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+        {severities.filter(s => data.buckets.some(b => b.severity === s)).map(s => (
+          <span key={s} style={{ fontSize: 9, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 1, background: SEVERITY_COLORS[s], display: 'inline-block' }} />
+            {s}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -441,6 +529,9 @@ export function LogExplorer({ services }: LogExplorerProps) {
               }`}
         </span>
       </div>
+
+      {/* Log Volume Chart */}
+      <LogVolumeChart window={window} service={serviceFilter || undefined} />
 
       {/* Table header */}
       <div

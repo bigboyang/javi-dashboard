@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee, Search, Share2, GitCompare, LayoutDashboard } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee, Search, Share2, GitCompare, LayoutDashboard, Bug, Server, Target, Zap, Flame, BookOpen, Rocket, Database, Radio } from 'lucide-react'
 
 interface NavItem {
   icon: ReactNode
@@ -17,6 +17,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const navItems: NavItem[] = [
     { icon: <Activity size={16} />, label: 'Overview', to: '/' },
+    { icon: <Radio size={16} />, label: 'Live', to: '/live' },
     { icon: <GitBranch size={16} />, label: 'Traces', to: '/traces' },
     { icon: <ScrollText size={16} />, label: 'Logs', to: '/logs' },
     { icon: <Network size={16} />, label: 'Topology', to: '/topology' },
@@ -29,6 +30,15 @@ export function AppShell({ children }: AppShellProps) {
     { icon: <Search size={16} />, label: 'Search', to: '/search' },
     { icon: <GitCompare size={16} />, label: 'Compare', to: '/compare' },
     { icon: <LayoutDashboard size={16} />, label: 'Dashboard', to: '/dashboard' },
+    { icon: <Bug size={16} />, label: 'Errors', to: '/errors' },
+    { icon: <Server size={16} />, label: 'Infra', to: '/infra' },
+    { icon: <Zap size={16} />, label: 'Slow Ops', to: '/slow-spans' },
+    { icon: <Database size={16} />, label: 'DB Queries', to: '/db-queries' },
+    { icon: <Target size={16} />, label: 'SLO', to: '/slo' },
+    { icon: <Flame size={16} />, label: 'Profiling', to: '/profiling' },
+    { icon: <BarChart2 size={16} />, label: 'Histograms', to: '/histogram' },
+    { icon: <BookOpen size={16} />, label: 'Catalog', to: '/catalog' },
+    { icon: <Rocket size={16} />, label: 'Deployments', to: '/deployments' },
   ]
 
   return (
@@ -81,7 +91,7 @@ export function AppShell({ children }: AppShellProps) {
         {/* Footer */}
         <div className="mt-auto px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            Phase 9
+            Phase 10
           </p>
           <p className="text-xs" style={{ color: 'var(--muted)', opacity: 0.6 }}>
             Advanced

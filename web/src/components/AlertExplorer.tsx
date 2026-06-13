@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, Trash2, Plus, AlertTriangle } from 'lucide-react'
+import { Bell, Trash2, Plus, AlertTriangle, Power } from 'lucide-react'
 import {
   fetchAlertRules,
   fetchAlertStatus,
   createAlertRule,
   deleteAlertRule,
+  patchAlertRule,
 } from '../api/apm'
 import type {
   AlertMetric,
   AlertCondition,
   AlertWindow,
   CreateAlertRuleRequest,
+  UpdateAlertRuleRequest,
 } from '../types/apm'
 
 const METRIC_LABELS: Record<AlertMetric, string> = {
@@ -74,6 +76,15 @@ export function AlertExplorer({ services }: AlertExplorerProps) {
 
   const deleteMutation = useMutation({
     mutationFn: deleteAlertRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alert-rules'] })
+      queryClient.invalidateQueries({ queryKey: ['alert-status'] })
+    },
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, req }: { id: string; req: UpdateAlertRuleRequest }) =>
+      patchAlertRule(id, req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alert-rules'] })
       queryClient.invalidateQueries({ queryKey: ['alert-status'] })
@@ -385,7 +396,7 @@ export function AlertExplorer({ services }: AlertExplorerProps) {
               <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--surface)' }}>
-                    {['Name', 'Service', 'Condition', 'Window', ''].map((h) => (
+                    {['Name', 'Service', 'Condition', 'Window', 'Status', ''].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-2.5 text-left font-medium"
@@ -402,10 +413,15 @@ export function AlertExplorer({ services }: AlertExplorerProps) {
                 <tbody>
                   {rules.map((rule) => {
                     const isFiring = firing.some((f) => f.rule_id === rule.id)
+                    const isDisabled = !rule.enabled
                     return (
                       <tr
                         key={rule.id}
-                        style={{ borderBottom: '1px solid var(--border)' }}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          opacity: isDisabled ? 0.5 : 1,
+                          transition: 'opacity 0.15s',
+                        }}
                       >
                         <td className="px-4 py-2.5" style={{ color: 'var(--text)' }}>
                           <div className="flex items-center gap-2">
@@ -437,16 +453,44 @@ export function AlertExplorer({ services }: AlertExplorerProps) {
                         <td className="px-4 py-2.5" style={{ color: 'var(--muted)' }}>
                           {rule.window}
                         </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => deleteMutation.mutate(rule.id)}
-                            disabled={deleteMutation.isPending}
-                            className="p-1 rounded transition-opacity hover:opacity-70"
-                            style={{ color: 'var(--muted)' }}
-                            title="Delete rule"
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded"
+                            style={{
+                              background: isDisabled
+                                ? 'rgba(136,146,164,0.15)'
+                                : 'rgba(34,197,94,0.15)',
+                              color: isDisabled ? 'var(--muted)' : 'var(--success)',
+                            }}
                           >
-                            <Trash2 size={13} />
-                          </button>
+                            {isDisabled ? 'disabled' : 'enabled'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() =>
+                                toggleMutation.mutate({ id: rule.id, req: { enabled: !rule.enabled } })
+                              }
+                              disabled={toggleMutation.isPending}
+                              className="p-1 rounded transition-opacity hover:opacity-70"
+                              style={{
+                                color: isDisabled ? 'var(--muted)' : 'var(--success)',
+                              }}
+                              title={isDisabled ? 'Enable rule' : 'Disable rule'}
+                            >
+                              <Power size={13} />
+                            </button>
+                            <button
+                              onClick={() => deleteMutation.mutate(rule.id)}
+                              disabled={deleteMutation.isPending}
+                              className="p-1 rounded transition-opacity hover:opacity-70"
+                              style={{ color: 'var(--muted)' }}
+                              title="Delete rule"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
