@@ -3,6 +3,11 @@ bin/
 dist/
 *.test
 
+# Runtime artifacts
+/javi/
+*.lck
+*.log.[0-9]*
+
 # Frontend
 web/node_modules/
 web/dist/
