@@ -5,14 +5,7 @@ import type {
   AnomalySeverity,
   ForecastServiceRED,
 } from '../types/forecast'
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`)
-  }
-  return res.json() as Promise<T>
-}
+import { apiFetch } from './client'
 
 export function fetchForecastRed(): Promise<ForecastRedResponse> {
   return apiFetch<ForecastRedResponse>('/api/v1/forecast/red')

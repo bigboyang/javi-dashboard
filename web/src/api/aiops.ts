@@ -1,10 +1,5 @@
 import type { AnomaliesResponse, RCAResponse } from '../types/aiops'
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`)
-  return res.json() as Promise<T>
-}
+import { apiFetch } from './client'
 
 export function fetchAnomalies(
   window = '1h',

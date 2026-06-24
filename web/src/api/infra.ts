@@ -1,10 +1,5 @@
 import type { InfraPodsResponse, InfraTimeseriesResponse } from '../types/infra'
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`)
-  return res.json() as Promise<T>
-}
+import { apiFetch } from './client'
 
 export function fetchInfraPods(service: string, window = '1h'): Promise<InfraPodsResponse> {
   return apiFetch<InfraPodsResponse>(

@@ -34,11 +34,22 @@ var (
 	forecastTTL     = 60 * time.Second
 )
 
+// forecastClient bounds upstream calls so a hung javi-forecast service cannot
+// tie up dashboard request goroutines indefinitely.
+var forecastClient = &http.Client{Timeout: 10 * time.Second}
+
 // proxyForecast fetches the given javi-forecast path, serves the response with
 // a 60-second in-memory cache, and writes errors as JSON.
 func proxyForecast(w http.ResponseWriter, r *http.Request, path string) {
+	// The query string is forwarded upstream, so it must be part of the cache key —
+	// otherwise ?severity=warn and ?severity=critical would share one response.
+	cacheKey := path
+	if r.URL.RawQuery != "" {
+		cacheKey += "?" + r.URL.RawQuery
+	}
+
 	forecastCacheMu.Lock()
-	if entry, ok := forecastCache[path]; ok && time.Now().Before(entry.expiresAt) {
+	if entry, ok := forecastCache[cacheKey]; ok && time.Now().Before(entry.expiresAt) {
 		body := entry.body
 		forecastCacheMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
@@ -58,7 +69,7 @@ func proxyForecast(w http.ResponseWriter, r *http.Request, path string) {
 	// Forward query string (e.g., ?metric=all, ?severity=warn)
 	req.URL.RawQuery = r.URL.RawQuery
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := forecastClient.Do(req)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "forecast service unavailable")
 		return
@@ -74,7 +85,15 @@ func proxyForecast(w http.ResponseWriter, r *http.Request, path string) {
 	// Validate that upstream returned JSON before caching.
 	if resp.StatusCode == http.StatusOK && json.Valid(body) {
 		forecastCacheMu.Lock()
-		forecastCache[path] = cacheEntry{body: body, expiresAt: time.Now().Add(forecastTTL)}
+		// Drop expired entries so the map can't grow without bound across many
+		// distinct service names / query combinations.
+		now := time.Now()
+		for k, v := range forecastCache {
+			if now.After(v.expiresAt) {
+				delete(forecastCache, k)
+			}
+		}
+		forecastCache[cacheKey] = cacheEntry{body: body, expiresAt: now.Add(forecastTTL)}
 		forecastCacheMu.Unlock()
 	}
 

@@ -1,12 +1,5 @@
 import type { ServicesResponse, RedSeriesResponse, TracesResponse, TraceDetailResponse, LogsResponse, TopologyResponse, MetricNamesResponse, MetricSeriesResponse, AlertRulesResponse, AlertStatusResponse, AlertRule, CreateAlertRuleRequest, OperationsResponse, UpdateAlertRuleRequest } from '../types/apm'
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`)
-  }
-  return res.json() as Promise<T>
-}
+import { apiFetch } from './client'
 
 export function fetchServices(window: string): Promise<ServicesResponse> {
   return apiFetch<ServicesResponse>(`/api/v1/services?window=${encodeURIComponent(window)}`)

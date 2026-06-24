@@ -170,9 +170,13 @@ func spaHandler(webFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if _, err := fs.Stat(webFS, path[1:]); err != nil {
+			// Clone the URL before rewriting Path; r.URL is a shared pointer, so
+			// mutating it directly would also corrupt the original request (e.g.
+			// the access log would record "/" instead of the requested path).
 			r2 := *r
-			r2.URL = *&r.URL
-			r2.URL.Path = "/"
+			u := *r.URL
+			u.Path = "/"
+			r2.URL = &u
 			fileServer.ServeHTTP(w, &r2)
 			return
 		}

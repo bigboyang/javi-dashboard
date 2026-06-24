@@ -1,3 +1,4 @@
+import { apiFetch } from './client'
 export interface DbQuery {
   service_name: string
   db_system: string
@@ -12,12 +13,6 @@ export interface DbQueriesResponse {
   queries: DbQuery[]
   window: string
   generated_at: string
-}
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json() as Promise<T>
 }
 
 export function fetchDbQueries(window = '24h', service?: string): Promise<DbQueriesResponse> {
