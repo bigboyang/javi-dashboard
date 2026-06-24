@@ -1,3 +1,4 @@
+import { apiFetch } from './client'
 export interface SlowSpan {
   trace_id: string
   span_id: string
@@ -14,12 +15,6 @@ export interface SlowSpansResponse {
   window: string
   min_ms: number
   generated_at: string
-}
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json() as Promise<T>
 }
 
 export function fetchSlowSpans(

@@ -1,3 +1,4 @@
+import { apiFetch } from './client'
 export type LiveSignal = 'span' | 'log' | 'metric'
 export type LiveSeverity = 'error' | 'warn' | 'info'
 
@@ -29,12 +30,6 @@ export interface LiveResponse {
   stats: LiveStats
   latest_ms: number
   server_now_ms: number
-}
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json() as Promise<T>
 }
 
 export function fetchLive(

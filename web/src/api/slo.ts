@@ -1,3 +1,4 @@
+import { apiFetch } from './client'
 export interface SLODefinition {
   service_name: string
   slo_name: string
@@ -35,12 +36,6 @@ export interface CreateSLORequest {
   target_pct: number
   metric_type: 'error_rate' | 'latency_p95' | 'latency_p99'
   threshold_ms: number
-}
-
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init)
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json() as Promise<T>
 }
 
 export function fetchSLODefinitions(): Promise<{ definitions: SLODefinition[] }> {

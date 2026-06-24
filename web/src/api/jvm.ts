@@ -1,10 +1,5 @@
 import type { JvmSnapshot, DependencyEdge, DependencyCausesResponse } from '../types/jvm'
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`)
-  return res.json() as Promise<T>
-}
+import { apiFetch } from './client'
 
 export function fetchJVMServices(): Promise<string[]> {
   return apiFetch<string[]>('/api/v1/jvm/services')
