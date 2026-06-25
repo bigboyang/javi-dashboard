@@ -21,6 +21,7 @@ ClickHouse 데이터를 보여주는 대시보드. **Go API 서버 + Vite/TypeSc
 - `make typecheck` — 프론트 타입 검사 (`web/`, `tsc --noEmit`)
 - `make install` — 프론트 의존성 설치 (`web/ && npm install`)
 - `make migrate` — ClickHouse 마이그레이션 실행
+- `make help` — 사용 가능한 Make 타깃 목록 출력
 
 ### 프론트엔드 (`web/`)
 
@@ -47,6 +48,7 @@ build
 dev
 dev-api
 dev-web
+help
 install
 migrate
 test
