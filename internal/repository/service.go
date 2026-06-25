@@ -1215,9 +1215,14 @@ ORDER BY start_time_nano ASC
 		if pid != "" && hasParent {
 			continue // not a root
 		}
-		// Descend the latest-finishing child chain from this root.
+		// Descend the latest-finishing child chain from this root. `visited` guards
+		// against malformed data (a self-parent span or a parent/child cycle) that
+		// would otherwise loop forever — the handler's context timeout only bounds
+		// the DB query, not this in-memory walk.
+		visited := make(map[int]bool)
 		cur := i
-		for {
+		for !visited[cur] {
+			visited[cur] = true
 			results[cur].OnCriticalPath = true
 			kids := childrenByParent[results[cur].SpanID]
 			if len(kids) == 0 {
