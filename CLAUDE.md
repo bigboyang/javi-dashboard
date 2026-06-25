@@ -47,6 +47,7 @@ build
 dev
 dev-api
 dev-web
+help
 install
 migrate
 test
