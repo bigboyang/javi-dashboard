@@ -67,7 +67,14 @@ func main() {
 
 		// Phase 2: Trace Explorer
 		r.Get("/traces", handler.GetTraces)
+		r.Get("/traces/compare", handler.GetTraceCompare)
 		r.Get("/traces/{traceId}", handler.GetTraceDetail)
+
+		// Cardinality Explorer — attribute-value latency breakdown
+		r.Route("/cardinality", func(r chi.Router) {
+			r.Get("/keys", handler.GetCardinalityKeys)
+			r.Get("/values", handler.GetCardinalityValues)
+		})
 
 		// Live Stream — real-time unified telemetry tail (spans/logs/metrics)
 		r.Get("/live", handler.GetLive)

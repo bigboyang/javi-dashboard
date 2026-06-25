@@ -246,6 +246,63 @@ type TopologyResponse struct {
 	Window string         `json:"window"`
 }
 
+// TraceCompareNode is one operation-path slot aligned across two traces. A node
+// may be present in only one side (PresentA/PresentB) when a trace has spans the
+// other lacks. DeltaMs = DurationB - DurationA when both are present.
+type TraceCompareNode struct {
+	PathKey    string  `json:"path_key"`
+	Operation  string  `json:"operation"`
+	Service    string  `json:"service"`
+	Depth      int     `json:"depth"`
+	PresentA   bool    `json:"present_a"`
+	PresentB   bool    `json:"present_b"`
+	DurationA  float64 `json:"duration_a_ms"`
+	DurationB  float64 `json:"duration_b_ms"`
+	SelfA      float64 `json:"self_a_ms"`
+	SelfB      float64 `json:"self_b_ms"`
+	DeltaMs    float64 `json:"delta_ms"`
+}
+
+// TraceCompareResponse is the envelope for GET /api/v1/traces/compare.
+type TraceCompareResponse struct {
+	TraceA  string             `json:"trace_a"`
+	TraceB  string             `json:"trace_b"`
+	TotalA  float64            `json:"total_a_ms"`
+	TotalB  float64            `json:"total_b_ms"`
+	Nodes   []TraceCompareNode `json:"nodes"`
+}
+
+// CardinalityKey is one span-attribute key and how many spans carry it.
+type CardinalityKey struct {
+	Key   string `json:"key"`
+	Count uint64 `json:"count"`
+}
+
+// CardinalityKeysResponse is the envelope for GET /api/v1/cardinality/keys.
+type CardinalityKeysResponse struct {
+	Keys        []CardinalityKey `json:"keys"`
+	Window      string           `json:"window"`
+	Service     string           `json:"service"`
+	GeneratedAt time.Time        `json:"generated_at"`
+}
+
+// CardinalityValue is the latency/error breakdown for one value of an attribute key.
+type CardinalityValue struct {
+	Value     string  `json:"value"`
+	Count     uint64  `json:"count"`
+	ErrorRate float64 `json:"error_rate"`
+	P95Ms     float64 `json:"p95_ms"`
+}
+
+// CardinalityValuesResponse is the envelope for GET /api/v1/cardinality/values.
+type CardinalityValuesResponse struct {
+	Key         string             `json:"key"`
+	Values      []CardinalityValue `json:"values"`
+	Window      string             `json:"window"`
+	Service     string             `json:"service"`
+	GeneratedAt time.Time          `json:"generated_at"`
+}
+
 // OutlierItem is one entity (operation / instance / pod) scored against its
 // peers. ZScore = (Value - Baseline) / stddev of the peer set; higher means a
 // stronger outlier. Baseline is the peer mean. Secondary/ErrorRate carry an
