@@ -34,3 +34,7 @@ migrate:
 		echo "Running $$f..."; \
 		clickhouse-client --query "$$(cat $$f)"; \
 	done
+
+# 사용 가능한 명령 목록 출력
+help:
+	@grep -E '^[a-zA-Z_-]+:' Makefile | sed 's/:.*//'
