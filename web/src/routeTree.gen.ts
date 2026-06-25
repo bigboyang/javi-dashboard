@@ -11,13 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TracesRouteImport } from './routes/traces'
 import { Route as TopologyRouteImport } from './routes/topology'
+import { Route as TopMoversRouteImport } from './routes/top-movers'
 import { Route as SlowSpansRouteImport } from './routes/slow-spans'
 import { Route as SloRouteImport } from './routes/slo'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ProfilingRouteImport } from './routes/profiling'
+import { Route as OutliersRouteImport } from './routes/outliers'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LiveRouteImport } from './routes/live'
+import { Route as LatencyHeatmapRouteImport } from './routes/latency-heatmap'
 import { Route as JvmRouteImport } from './routes/jvm'
 import { Route as InfraRouteImport } from './routes/infra'
 import { Route as HistogramRouteImport } from './routes/histogram'
@@ -44,6 +47,11 @@ const TopologyRoute = TopologyRouteImport.update({
   path: '/topology',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TopMoversRoute = TopMoversRouteImport.update({
+  id: '/top-movers',
+  path: '/top-movers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlowSpansRoute = SlowSpansRouteImport.update({
   id: '/slow-spans',
   path: '/slow-spans',
@@ -64,6 +72,11 @@ const ProfilingRoute = ProfilingRouteImport.update({
   path: '/profiling',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OutliersRoute = OutliersRouteImport.update({
+  id: '/outliers',
+  path: '/outliers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MetricsRoute = MetricsRouteImport.update({
   id: '/metrics',
   path: '/metrics',
@@ -77,6 +90,11 @@ const LogsRoute = LogsRouteImport.update({
 const LiveRoute = LiveRouteImport.update({
   id: '/live',
   path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LatencyHeatmapRoute = LatencyHeatmapRouteImport.update({
+  id: '/latency-heatmap',
+  path: '/latency-heatmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JvmRoute = JvmRouteImport.update({
@@ -170,13 +188,16 @@ export interface FileRoutesByFullPath {
   '/histogram': typeof HistogramRoute
   '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/latency-heatmap': typeof LatencyHeatmapRoute
   '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/outliers': typeof OutliersRoute
   '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
   '/slo': typeof SloRoute
   '/slow-spans': typeof SlowSpansRoute
+  '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -196,13 +217,16 @@ export interface FileRoutesByTo {
   '/histogram': typeof HistogramRoute
   '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/latency-heatmap': typeof LatencyHeatmapRoute
   '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/outliers': typeof OutliersRoute
   '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
   '/slo': typeof SloRoute
   '/slow-spans': typeof SlowSpansRoute
+  '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -223,13 +247,16 @@ export interface FileRoutesById {
   '/histogram': typeof HistogramRoute
   '/infra': typeof InfraRoute
   '/jvm': typeof JvmRoute
+  '/latency-heatmap': typeof LatencyHeatmapRoute
   '/live': typeof LiveRoute
   '/logs': typeof LogsRoute
   '/metrics': typeof MetricsRoute
+  '/outliers': typeof OutliersRoute
   '/profiling': typeof ProfilingRoute
   '/search': typeof SearchRoute
   '/slo': typeof SloRoute
   '/slow-spans': typeof SlowSpansRoute
+  '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
@@ -251,13 +278,16 @@ export interface FileRouteTypes {
     | '/histogram'
     | '/infra'
     | '/jvm'
+    | '/latency-heatmap'
     | '/live'
     | '/logs'
     | '/metrics'
+    | '/outliers'
     | '/profiling'
     | '/search'
     | '/slo'
     | '/slow-spans'
+    | '/top-movers'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -277,13 +307,16 @@ export interface FileRouteTypes {
     | '/histogram'
     | '/infra'
     | '/jvm'
+    | '/latency-heatmap'
     | '/live'
     | '/logs'
     | '/metrics'
+    | '/outliers'
     | '/profiling'
     | '/search'
     | '/slo'
     | '/slow-spans'
+    | '/top-movers'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -303,13 +336,16 @@ export interface FileRouteTypes {
     | '/histogram'
     | '/infra'
     | '/jvm'
+    | '/latency-heatmap'
     | '/live'
     | '/logs'
     | '/metrics'
+    | '/outliers'
     | '/profiling'
     | '/search'
     | '/slo'
     | '/slow-spans'
+    | '/top-movers'
     | '/topology'
     | '/traces'
     | '/services/$name'
@@ -330,13 +366,16 @@ export interface RootRouteChildren {
   HistogramRoute: typeof HistogramRoute
   InfraRoute: typeof InfraRoute
   JvmRoute: typeof JvmRoute
+  LatencyHeatmapRoute: typeof LatencyHeatmapRoute
   LiveRoute: typeof LiveRoute
   LogsRoute: typeof LogsRoute
   MetricsRoute: typeof MetricsRoute
+  OutliersRoute: typeof OutliersRoute
   ProfilingRoute: typeof ProfilingRoute
   SearchRoute: typeof SearchRoute
   SloRoute: typeof SloRoute
   SlowSpansRoute: typeof SlowSpansRoute
+  TopMoversRoute: typeof TopMoversRoute
   TopologyRoute: typeof TopologyRoute
   TracesRoute: typeof TracesRoute
   ServicesNameRoute: typeof ServicesNameRoute
@@ -356,6 +395,13 @@ declare module '@tanstack/react-router' {
       path: '/topology'
       fullPath: '/topology'
       preLoaderRoute: typeof TopologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/top-movers': {
+      id: '/top-movers'
+      path: '/top-movers'
+      fullPath: '/top-movers'
+      preLoaderRoute: typeof TopMoversRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/slow-spans': {
@@ -386,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfilingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/outliers': {
+      id: '/outliers'
+      path: '/outliers'
+      fullPath: '/outliers'
+      preLoaderRoute: typeof OutliersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/metrics': {
       id: '/metrics'
       path: '/metrics'
@@ -405,6 +458,13 @@ declare module '@tanstack/react-router' {
       path: '/live'
       fullPath: '/live'
       preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/latency-heatmap': {
+      id: '/latency-heatmap'
+      path: '/latency-heatmap'
+      fullPath: '/latency-heatmap'
+      preLoaderRoute: typeof LatencyHeatmapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jvm': {
@@ -530,13 +590,16 @@ const rootRouteChildren: RootRouteChildren = {
   HistogramRoute: HistogramRoute,
   InfraRoute: InfraRoute,
   JvmRoute: JvmRoute,
+  LatencyHeatmapRoute: LatencyHeatmapRoute,
   LiveRoute: LiveRoute,
   LogsRoute: LogsRoute,
   MetricsRoute: MetricsRoute,
+  OutliersRoute: OutliersRoute,
   ProfilingRoute: ProfilingRoute,
   SearchRoute: SearchRoute,
   SloRoute: SloRoute,
   SlowSpansRoute: SlowSpansRoute,
+  TopMoversRoute: TopMoversRoute,
   TopologyRoute: TopologyRoute,
   TracesRoute: TracesRoute,
   ServicesNameRoute: ServicesNameRoute,

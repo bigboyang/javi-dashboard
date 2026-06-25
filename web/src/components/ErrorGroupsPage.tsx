@@ -43,8 +43,19 @@ function GroupRow({ g }: { g: ErrorGroup }) {
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </td>
         <td style={{ padding: '10px 0', maxWidth: 260 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--health-critical)', fontFamily: 'monospace' }}>
-            {g.exception_type || '(unknown)'}
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--health-critical)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {g.exception_type || '(unknown)'}
+            </span>
+            {g.is_new && (
+              <span style={{
+                flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                background: 'rgba(245,158,11,0.18)', color: 'var(--warning, #f59e0b)',
+                padding: '1px 5px', borderRadius: 8,
+              }}>
+                NEW
+              </span>
+            )}
           </div>
           <div style={{
             fontSize: 11, color: 'var(--muted)', marginTop: 2,
@@ -106,6 +117,7 @@ export function ErrorGroupsPage() {
   const [window, setWindow] = useState<Window>('24h')
   const [service, setService] = useState('')
   const [search, setSearch] = useState('')
+  const [newOnly, setNewOnly] = useState(false)
 
   const { data: svcData } = useQuery({
     queryKey: ['services', '24h'],
@@ -118,6 +130,7 @@ export function ErrorGroupsPage() {
   })
 
   const groups = (data?.groups ?? []).filter(g => {
+    if (newOnly && !g.is_new) return false
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -126,6 +139,8 @@ export function ErrorGroupsPage() {
       g.service_name.toLowerCase().includes(q)
     )
   })
+
+  const newCount = (data?.groups ?? []).filter(g => g.is_new).length
 
   const services = svcData?.services?.map(s => s.name) ?? []
 
@@ -141,6 +156,14 @@ export function ErrorGroupsPage() {
         }}>
           {data?.groups.length ?? 0} groups
         </span>
+        {newCount > 0 && (
+          <span style={{
+            fontSize: 11, padding: '2px 8px', borderRadius: 10,
+            background: 'rgba(245,158,11,0.15)', color: 'var(--warning, #f59e0b)',
+          }}>
+            {newCount} new
+          </span>
+        )}
       </div>
 
       {/* Filters */}
@@ -176,6 +199,20 @@ export function ErrorGroupsPage() {
           <option value="">All services</option>
           {services.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
+
+        {/* New only toggle */}
+        <button
+          onClick={() => setNewOnly(v => !v)}
+          style={{
+            fontSize: 12, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
+            border: `1px solid ${newOnly ? 'var(--warning, #f59e0b)' : 'var(--border)'}`,
+            background: newOnly ? 'rgba(245,158,11,0.15)' : 'var(--surface)',
+            color: newOnly ? 'var(--warning, #f59e0b)' : 'var(--muted)',
+            fontWeight: newOnly ? 700 : 400,
+          }}
+        >
+          New only
+        </button>
 
         {/* Search */}
         <input

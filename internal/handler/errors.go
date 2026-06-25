@@ -19,6 +19,10 @@ type errorGroup struct {
 	TotalCount       uint64 `json:"total_count"`
 	FirstSeenMs      int64  `json:"first_seen_ms"`
 	LastSeenMs       int64  `json:"last_seen_ms"`
+	// IsNew marks error groups whose first-ever occurrence falls inside the
+	// requested window — i.e. errors that did not exist before and just appeared.
+	// These are the prime suspects after a deploy.
+	IsNew bool `json:"is_new"`
 }
 
 type errorGroupsResponse struct {
@@ -117,6 +121,8 @@ LIMIT ` + strconv.Itoa(limit)
 		}
 		g.FirstSeenMs = firstSeen.UnixMilli()
 		g.LastSeenMs = lastSeen.UnixMilli()
+		// New if the group first appeared within the window (no earlier occurrence).
+		g.IsNew = !firstSeen.Before(since)
 		groups = append(groups, g)
 	}
 	if err := rows.Err(); err != nil {

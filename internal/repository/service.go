@@ -7,6 +7,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -40,12 +41,14 @@ func stepSeconds(d time.Duration) int64 {
 // returned by the aggregate query. We scan into concrete types and then
 // convert to the public model to keep the boundary between SQL and Go clear.
 type serviceRow struct {
-	ServiceName   string
-	TotalRequests uint64
-	ErrorCount    uint64
-	P50Ms         float64
-	P95Ms         float64
-	P99Ms         float64
+	ServiceName     string
+	TotalRequests   uint64
+	ErrorCount      uint64
+	P50Ms           float64
+	P95Ms           float64
+	P99Ms           float64
+	SatisfiedCount  uint64
+	ToleratingCount uint64
 }
 
 // ListServices returns aggregate RED metrics for every service that had at
@@ -61,11 +64,19 @@ type serviceRow struct {
 //   - start_time_nano is stored as Int64 nanoseconds since epoch; we convert via
 //     fromUnixTimestamp64Nano so ClickHouse can apply its DateTime partition pruning.
 //   - Binding via query parameters (?) rather than fmt.Sprintf prevents SQL injection.
-func ListServices(ctx context.Context, window time.Duration) ([]model.ServiceSummary, error) {
+func ListServices(ctx context.Context, window time.Duration, apdexThresholdMs float64) ([]model.ServiceSummary, error) {
 	windowSec := windowSeconds(window)
 	winMin := windowMinutes(window)
 
-	// clickhouse-go/v2 uses positional ? placeholders.
+	// Apdex thresholds in nanoseconds (the native unit of duration_nano):
+	//   satisfied  = duration ≤ T
+	//   tolerating = T < duration ≤ 4T
+	// Computed inside ClickHouse via countIf to avoid scanning raw durations into Go.
+	satisfiedNs := int64(apdexThresholdMs * 1e6)
+	toleratingNs := satisfiedNs * 4
+
+	// clickhouse-go/v2 uses positional ? placeholders. The countIf thresholds in
+	// the SELECT list bind first (by position), then the window bound in WHERE.
 	const query = `
 SELECT
     service_name,
@@ -73,13 +84,15 @@ SELECT
     countIf(status_code = 2)                              AS error_count,
     quantileExact(0.5)(duration_nano / 1e6)               AS p50_ms,
     quantileExact(0.95)(duration_nano / 1e6)              AS p95_ms,
-    quantileExact(0.99)(duration_nano / 1e6)              AS p99_ms
+    quantileExact(0.99)(duration_nano / 1e6)              AS p99_ms,
+    countIf(duration_nano <= ?)                           AS satisfied_count,
+    countIf(duration_nano > ? AND duration_nano <= ?)     AS tolerating_count
 FROM apm.spans
 WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
 GROUP BY service_name
 ORDER BY total_requests DESC
 `
-	rows, err := ch.DB.Query(ctx, query, windowSec)
+	rows, err := ch.DB.Query(ctx, query, satisfiedNs, satisfiedNs, toleratingNs, windowSec)
 	if err != nil {
 		return nil, fmt.Errorf("list services query: %w", err)
 	}
@@ -95,14 +108,18 @@ ORDER BY total_requests DESC
 			&r.P50Ms,
 			&r.P95Ms,
 			&r.P99Ms,
+			&r.SatisfiedCount,
+			&r.ToleratingCount,
 		); err != nil {
 			return nil, fmt.Errorf("list services scan: %w", err)
 		}
 
 		rate := float64(r.TotalRequests) / winMin
 		errorRate := 0.0
+		apdex := 0.0
 		if r.TotalRequests > 0 {
 			errorRate = float64(r.ErrorCount) / float64(r.TotalRequests)
+			apdex = (float64(r.SatisfiedCount) + float64(r.ToleratingCount)/2) / float64(r.TotalRequests)
 		}
 
 		results = append(results, model.ServiceSummary{
@@ -114,10 +131,122 @@ ORDER BY total_requests DESC
 			P99Ms:         r.P99Ms,
 			TotalRequests: r.TotalRequests,
 			ErrorCount:    r.ErrorCount,
+			Apdex:         apdex,
 		})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list services rows: %w", err)
+	}
+	return results, nil
+}
+
+// -----------------------------------------------------------------------
+// ListTopMovers
+// -----------------------------------------------------------------------
+
+// topMoverRow is an intermediate scan target for the top-movers comparison query.
+type topMoverRow struct {
+	ServiceName string
+	CurCount    uint64
+	PrevCount   uint64
+	CurErr      uint64
+	PrevErr     uint64
+	CurP95      float64
+	PrevP95     float64
+}
+
+// ListTopMovers compares each service's RED metrics between the current window
+// [now-W, now] and the immediately preceding window [now-2W, now-W], returning
+// the per-service deltas so the dashboard can surface "what got worse".
+//
+// Query design notes:
+//   - A single scan over the last 2W tags each span as 'cur' or 'prev' via a
+//     conditional, then aggregates both halves in one GROUP BY. This is cheaper
+//     than two separate scans and keeps the two periods perfectly aligned.
+//   - quantileExactIf computes the p95 for each half independently.
+//   - The conditional in the SELECT binds the window param first (by position),
+//     then the 2*window bound in WHERE.
+//   - Sorting/ranking is done in Go so the handler can offer multiple sort keys
+//     without re-querying.
+func ListTopMovers(ctx context.Context, window time.Duration) ([]model.TopMover, error) {
+	windowSec := windowSeconds(window)
+	doubleSec := windowSec * 2
+	winMin := windowMinutes(window)
+
+	const query = `
+SELECT
+    service_name,
+    countIf(half = 'cur')                                              AS cur_count,
+    countIf(half = 'prev')                                            AS prev_count,
+    countIf(status_code = 2 AND half = 'cur')                         AS cur_err,
+    countIf(status_code = 2 AND half = 'prev')                        AS prev_err,
+    quantileExactIf(0.95)(duration_nano / 1e6, half = 'cur')         AS cur_p95,
+    quantileExactIf(0.95)(duration_nano / 1e6, half = 'prev')        AS prev_p95
+FROM (
+    SELECT
+        service_name,
+        status_code,
+        duration_nano,
+        if(fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND, 'cur', 'prev') AS half
+    FROM apm.spans
+    WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND
+)
+GROUP BY service_name
+`
+	rows, err := ch.DB.Query(ctx, query, windowSec, doubleSec)
+	if err != nil {
+		return nil, fmt.Errorf("top movers query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.TopMover
+	for rows.Next() {
+		var r topMoverRow
+		if err := rows.Scan(
+			&r.ServiceName,
+			&r.CurCount,
+			&r.PrevCount,
+			&r.CurErr,
+			&r.PrevErr,
+			&r.CurP95,
+			&r.PrevP95,
+		); err != nil {
+			return nil, fmt.Errorf("top movers scan: %w", err)
+		}
+
+		curErrRate := 0.0
+		if r.CurCount > 0 {
+			curErrRate = float64(r.CurErr) / float64(r.CurCount)
+		}
+		prevErrRate := 0.0
+		if r.PrevCount > 0 {
+			prevErrRate = float64(r.PrevErr) / float64(r.PrevCount)
+		}
+
+		// Relative p95 change vs the previous window. Guard against a zero baseline
+		// (new or previously-idle service) by reporting 0% rather than +Inf.
+		p95DeltaPct := 0.0
+		if r.PrevP95 > 0 {
+			p95DeltaPct = (r.CurP95 - r.PrevP95) / r.PrevP95
+		}
+
+		results = append(results, model.TopMover{
+			Name:           r.ServiceName,
+			CurP95Ms:       r.CurP95,
+			PrevP95Ms:      r.PrevP95,
+			P95DeltaMs:     r.CurP95 - r.PrevP95,
+			P95DeltaPct:    p95DeltaPct,
+			CurErrorRate:   curErrRate,
+			PrevErrorRate:  prevErrRate,
+			ErrorRateDelta: curErrRate - prevErrRate,
+			CurRate:        float64(r.CurCount) / winMin,
+			PrevRate:       float64(r.PrevCount) / winMin,
+			CurRequests:    r.CurCount,
+			PrevRequests:   r.PrevCount,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("top movers rows: %w", err)
 	}
 	return results, nil
 }
@@ -556,6 +685,141 @@ LIMIT ?
 }
 
 // -----------------------------------------------------------------------
+// GetLatencyHeatmap
+// -----------------------------------------------------------------------
+
+// maxHeatmapBucket caps the latency Y axis. Bucket 14 = [2^14, 2^15) ms ≈ 16–32s;
+// anything slower folds into the top band so the axis stays bounded.
+const maxHeatmapBucket = 14
+
+// GetLatencyHeatmap returns a 2D distribution of request latency over time:
+// time on the X axis (step buckets) and log2-scaled latency bands on the Y axis,
+// with the span count in each tile. Unlike percentiles, this reveals bimodal
+// latency (e.g. a fast cache-hit cluster and a slow cache-miss cluster).
+//
+// Query design notes:
+//   - toStartOfInterval buckets time the same way GetREDSeries does (index-friendly).
+//   - floor(log2(duration_ms)) yields the latency band; greatest(...,1) avoids
+//     log2(0). The band is clamped to maxHeatmapBucket in Go.
+//   - Only non-empty (ts, band) tiles are returned; the handler/ frontend treat
+//     missing tiles as zero. Columns and Buckets give the full axes for rendering.
+func GetLatencyHeatmap(
+	ctx context.Context,
+	service string,
+	window time.Duration,
+	step time.Duration,
+) (*model.LatencyHeatmapResponse, error) {
+	windowSec := windowSeconds(window)
+	stepSec := stepSeconds(step)
+
+	// Param order follows appearance in the SQL string: step (SELECT), then the
+	// optional service filter, then the window bound (WHERE).
+	args := []any{stepSec}
+	serviceFilter := ""
+	if service != "" {
+		serviceFilter = " AND service_name = ?"
+		args = append(args, service)
+	}
+	args = append(args, windowSec)
+
+	query := `
+SELECT
+    toStartOfInterval(fromUnixTimestamp64Nano(start_time_nano), INTERVAL ? SECOND) AS ts,
+    toInt32(floor(log2(greatest(duration_nano / 1e6, 1))))                          AS bucket,
+    count()                                                                          AS cnt
+FROM apm.spans
+WHERE fromUnixTimestamp64Nano(start_time_nano) >= now() - INTERVAL ? SECOND` +
+		serviceFilter + `
+GROUP BY ts, bucket
+ORDER BY ts ASC, bucket ASC
+`
+	rows, err := ch.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("latency heatmap query: %w", err)
+	}
+	defer rows.Close()
+
+	// Accumulate counts per (column index, clamped bucket); clamping can merge two
+	// raw bands into the top band, so sum rather than overwrite.
+	type key struct {
+		ts     int64
+		bucket int
+	}
+	counts := make(map[key]uint64)
+	var maxCount uint64
+	minBucket, maxBucket := maxHeatmapBucket, 0
+	seenBucket := false
+
+	for rows.Next() {
+		var ts time.Time
+		var bucket int32
+		var cnt uint64
+		if err := rows.Scan(&ts, &bucket, &cnt); err != nil {
+			return nil, fmt.Errorf("latency heatmap scan: %w", err)
+		}
+		b := int(bucket)
+		if b < 0 {
+			b = 0
+		}
+		if b > maxHeatmapBucket {
+			b = maxHeatmapBucket
+		}
+		k := key{ts: ts.UTC().UnixMilli(), bucket: b}
+		counts[k] += cnt
+		if counts[k] > maxCount {
+			maxCount = counts[k]
+		}
+		if b < minBucket {
+			minBucket = b
+		}
+		if b > maxBucket {
+			maxBucket = b
+		}
+		seenBucket = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("latency heatmap rows: %w", err)
+	}
+
+	// Build the time axis (columns) aligned to the step boundary, matching the
+	// gap-fill approach used by GetREDSeries.
+	now := time.Now().UTC()
+	start := now.Add(-window).Truncate(step)
+	end := now.Truncate(step)
+	columns := make([]int64, 0, int(window/step)+1)
+	for t := start; !t.After(end); t = t.Add(step) {
+		columns = append(columns, t.UnixMilli())
+	}
+
+	// Build the latency axis (buckets) spanning the observed range. Default to a
+	// single band when there is no data so the frontend renders an empty grid.
+	if !seenBucket {
+		minBucket, maxBucket = 0, 0
+	}
+	buckets := make([]model.HeatmapBucket, 0, maxBucket-minBucket+1)
+	for b := minBucket; b <= maxBucket; b++ {
+		buckets = append(buckets, model.HeatmapBucket{
+			Index:  b,
+			LowMs:  math.Pow(2, float64(b)),
+			HighMs: math.Pow(2, float64(b+1)),
+		})
+	}
+
+	cells := make([]model.HeatmapCell, 0, len(counts))
+	for k, c := range counts {
+		cells = append(cells, model.HeatmapCell{TsMs: k.ts, Bucket: k.bucket, Count: c})
+	}
+
+	return &model.LatencyHeatmapResponse{
+		Service:  service,
+		Columns:  columns,
+		Buckets:  buckets,
+		Cells:    cells,
+		MaxCount: maxCount,
+	}, nil
+}
+
+// -----------------------------------------------------------------------
 // GetServiceTopology
 // -----------------------------------------------------------------------
 
@@ -907,5 +1171,67 @@ ORDER BY start_time_nano ASC
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("get trace spans rows: %w", err)
 	}
+
+	// Compute exclusive (self) time per span: duration minus the summed duration
+	// of its direct children. Sum children durations keyed by parent span_id in a
+	// single pass, then subtract. Clamp at 0 since parallel children can overlap
+	// and sum past the parent's wall-clock duration.
+	childDurationByParent := make(map[string]float64, len(results))
+	for i := range results {
+		pid := results[i].ParentSpanID
+		if pid != "" {
+			childDurationByParent[pid] += results[i].DurationMs
+		}
+	}
+	for i := range results {
+		self := results[i].DurationMs - childDurationByParent[results[i].SpanID]
+		if self < 0 {
+			self = 0
+		}
+		results[i].SelfMs = self
+	}
+
+	// Mark the critical path. Index spans by ID and group child indices by parent.
+	// endMs(span) = start + duration. Starting from each root (no parent, or a
+	// parent absent from this trace slice), repeatedly descend into the child that
+	// finishes last until a leaf is reached.
+	idxByID := make(map[string]int, len(results))
+	for i := range results {
+		idxByID[results[i].SpanID] = i
+	}
+	childrenByParent := make(map[string][]int, len(results))
+	for i := range results {
+		pid := results[i].ParentSpanID
+		if _, hasParent := idxByID[pid]; pid != "" && hasParent {
+			childrenByParent[pid] = append(childrenByParent[pid], i)
+		}
+	}
+	endMs := func(i int) float64 {
+		return float64(results[i].StartTime.UnixNano())/1e6 + results[i].DurationMs
+	}
+	for i := range results {
+		pid := results[i].ParentSpanID
+		_, hasParent := idxByID[pid]
+		if pid != "" && hasParent {
+			continue // not a root
+		}
+		// Descend the latest-finishing child chain from this root.
+		cur := i
+		for {
+			results[cur].OnCriticalPath = true
+			kids := childrenByParent[results[cur].SpanID]
+			if len(kids) == 0 {
+				break
+			}
+			next := kids[0]
+			for _, k := range kids[1:] {
+				if endMs(k) > endMs(next) {
+					next = k
+				}
+			}
+			cur = next
+		}
+	}
+
 	return results, nil
 }

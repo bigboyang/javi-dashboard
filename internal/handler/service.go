@@ -59,20 +59,35 @@ func windowFromRequest(w http.ResponseWriter, r *http.Request) (model.WindowPara
 // GetServices — GET /api/v1/services
 // -----------------------------------------------------------------------
 
+// defaultApdexThresholdMs is the target response time T used for Apdex when the
+// client does not specify one. 500ms is the conventional web-request default.
+const defaultApdexThresholdMs = 500.0
+
 // GetServices handles GET /api/v1/services.
 // Query params:
 //
 //	?window=5m|15m|1h|6h|24h  (default: 5m)
+//	?apdex_t=<ms>             (Apdex threshold T in ms; default 500, range 1–60000)
 func GetServices(w http.ResponseWriter, r *http.Request) {
 	wp, dur, ok := windowFromRequest(w, r)
 	if !ok {
 		return
 	}
 
+	apdexT := defaultApdexThresholdMs
+	if raw := r.URL.Query().Get("apdex_t"); raw != "" {
+		var t float64
+		if _, err := fmt.Sscanf(raw, "%g", &t); err != nil || t < 1 || t > 60000 {
+			writeError(w, http.StatusBadRequest, "invalid apdex_t: must be 1–60000 (ms)")
+			return
+		}
+		apdexT = t
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()
 
-	services, err := repository.ListServices(ctx, dur)
+	services, err := repository.ListServices(ctx, dur, apdexT)
 	if err != nil {
 		// Do not leak internal ClickHouse error messages to the client.
 		writeError(w, http.StatusInternalServerError, "failed to query services")
@@ -86,9 +101,10 @@ func GetServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, model.ServicesResponse{
-		Services:    services,
-		Window:      string(wp),
-		GeneratedAt: time.Now().UTC(),
+		Services:         services,
+		Window:           string(wp),
+		GeneratedAt:      time.Now().UTC(),
+		ApdexThresholdMs: apdexT,
 	})
 }
 
@@ -443,6 +459,63 @@ func GetMetricSeries(w http.ResponseWriter, r *http.Request) {
 		Step:       stepLabel,
 		Series:     series,
 	})
+}
+
+// -----------------------------------------------------------------------
+// GetLatencyHeatmap — GET /api/v1/metrics/latency-heatmap
+// -----------------------------------------------------------------------
+
+// GetLatencyHeatmap handles GET /api/v1/metrics/latency-heatmap.
+// Returns a time × latency-band distribution of request counts.
+//
+// Query params:
+//
+//	?window=5m|15m|1h|6h|24h  (default: 1h)
+//	?step=1m|5m|15m|1h         (default: derived; must be smaller than window)
+//	?service=<name>            (optional; omit for all services)
+func GetLatencyHeatmap(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("window")
+	if raw == "" {
+		raw = "1h"
+	}
+	wp, windowDur, ok := model.ParseWindow(raw)
+	if !ok {
+		writeError(w, http.StatusBadRequest,
+			"invalid window: must be one of 5m, 15m, 1h, 6h, 24h")
+		return
+	}
+
+	rawStep := r.URL.Query().Get("step")
+	if rawStep == "" {
+		rawStep = "1m"
+	}
+	stepLabel, stepDur, ok := model.ParseStep(rawStep)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "invalid step: must be one of 1m, 5m, 15m, 1h")
+		return
+	}
+	if stepDur >= windowDur {
+		writeError(w, http.StatusBadRequest, "step must be smaller than window")
+		return
+	}
+
+	service := r.URL.Query().Get("service")
+
+	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
+	defer cancel()
+
+	resp, err := repository.GetLatencyHeatmap(ctx, service, windowDur, stepDur)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to query latency heatmap")
+		return
+	}
+
+	resp.Window = string(wp)
+	resp.Step = stepLabel
+	if resp.Cells == nil {
+		resp.Cells = []model.HeatmapCell{}
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // -----------------------------------------------------------------------

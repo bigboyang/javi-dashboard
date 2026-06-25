@@ -52,6 +52,14 @@ func main() {
 
 		// Phase 1: Service Overview RED Dashboard
 		r.Get("/services", handler.GetServices)
+		// Top Movers — services whose RED metrics changed most vs the prior window
+		r.Get("/top-movers", handler.GetTopMovers)
+		// Outliers — entities deviating from their peers (z-score)
+		r.Route("/outliers", func(r chi.Router) {
+			r.Get("/operations", handler.GetOperationOutliers)
+			r.Get("/instances", handler.GetInstanceOutliers)
+			r.Get("/resources", handler.GetResourceOutliers)
+		})
 		r.Route("/services/{service}", func(r chi.Router) {
 			r.Get("/red", handler.GetREDSeries)
 			r.Get("/operations", handler.GetOperations)
@@ -73,6 +81,8 @@ func main() {
 		// Phase 5: Custom Metrics
 		r.Get("/metrics/names", handler.GetMetricNames)
 		r.Get("/metrics/series", handler.GetMetricSeries)
+		// Latency Heatmap — time × latency-band distribution
+		r.Get("/metrics/latency-heatmap", handler.GetLatencyHeatmap)
 
 		// Phase 6: Alerting
 		r.Get("/alerts/rules", handler.GetAlertRules)
