@@ -54,7 +54,9 @@ jobs:
       - name: 판단 구간 갱신 (Claude)
         if: steps.guard.outputs.skip != 'true' && steps.exists.outputs.ok == 'true'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pro/Max 구독 토큰으로 인증 (claude setup-token 으로 발급).
+          # API 크레딧 대신 구독 한도를 사용한다.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           claude -p "이 브랜치가 origin/main 대비 바꾼 내용을 'git diff origin/main...HEAD' 로 확인하라.
           CLAUDE.md 에서 '<!-- AUTO-GENERATED:start -->' ~ '<!-- AUTO-GENERATED:end -->' 구간은
