@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TracesRouteImport } from './routes/traces'
+import { Route as TraceCompareRouteImport } from './routes/trace-compare'
 import { Route as TopologyRouteImport } from './routes/topology'
 import { Route as TopMoversRouteImport } from './routes/top-movers'
 import { Route as SlowSpansRouteImport } from './routes/slow-spans'
@@ -32,6 +33,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as CausalityRouteImport } from './routes/causality'
 import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as CardinalityRouteImport } from './routes/cardinality'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AiopsRouteImport } from './routes/aiops'
 import { Route as IndexRouteImport } from './routes/index'
@@ -40,6 +42,11 @@ import { Route as ServicesNameRouteImport } from './routes/services.$name'
 const TracesRoute = TracesRouteImport.update({
   id: '/traces',
   path: '/traces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TraceCompareRoute = TraceCompareRouteImport.update({
+  id: '/trace-compare',
+  path: '/trace-compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TopologyRoute = TopologyRouteImport.update({
@@ -152,6 +159,11 @@ const CatalogRoute = CatalogRouteImport.update({
   path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardinalityRoute = CardinalityRouteImport.update({
+  id: '/cardinality',
+  path: '/cardinality',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlertsRoute = AlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
@@ -177,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/cardinality': typeof CardinalityRoute
   '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
@@ -199,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/slow-spans': typeof SlowSpansRoute
   '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
+  '/trace-compare': typeof TraceCompareRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
 }
@@ -206,6 +220,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/cardinality': typeof CardinalityRoute
   '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
@@ -228,6 +243,7 @@ export interface FileRoutesByTo {
   '/slow-spans': typeof SlowSpansRoute
   '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
+  '/trace-compare': typeof TraceCompareRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
 }
@@ -236,6 +252,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aiops': typeof AiopsRoute
   '/alerts': typeof AlertsRoute
+  '/cardinality': typeof CardinalityRoute
   '/catalog': typeof CatalogRoute
   '/causality': typeof CausalityRoute
   '/compare': typeof CompareRoute
@@ -258,6 +275,7 @@ export interface FileRoutesById {
   '/slow-spans': typeof SlowSpansRoute
   '/top-movers': typeof TopMoversRoute
   '/topology': typeof TopologyRoute
+  '/trace-compare': typeof TraceCompareRoute
   '/traces': typeof TracesRoute
   '/services/$name': typeof ServicesNameRoute
 }
@@ -267,6 +285,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/cardinality'
     | '/catalog'
     | '/causality'
     | '/compare'
@@ -289,6 +308,7 @@ export interface FileRouteTypes {
     | '/slow-spans'
     | '/top-movers'
     | '/topology'
+    | '/trace-compare'
     | '/traces'
     | '/services/$name'
   fileRoutesByTo: FileRoutesByTo
@@ -296,6 +316,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/cardinality'
     | '/catalog'
     | '/causality'
     | '/compare'
@@ -318,6 +339,7 @@ export interface FileRouteTypes {
     | '/slow-spans'
     | '/top-movers'
     | '/topology'
+    | '/trace-compare'
     | '/traces'
     | '/services/$name'
   id:
@@ -325,6 +347,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aiops'
     | '/alerts'
+    | '/cardinality'
     | '/catalog'
     | '/causality'
     | '/compare'
@@ -347,6 +370,7 @@ export interface FileRouteTypes {
     | '/slow-spans'
     | '/top-movers'
     | '/topology'
+    | '/trace-compare'
     | '/traces'
     | '/services/$name'
   fileRoutesById: FileRoutesById
@@ -355,6 +379,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiopsRoute: typeof AiopsRoute
   AlertsRoute: typeof AlertsRoute
+  CardinalityRoute: typeof CardinalityRoute
   CatalogRoute: typeof CatalogRoute
   CausalityRoute: typeof CausalityRoute
   CompareRoute: typeof CompareRoute
@@ -377,6 +402,7 @@ export interface RootRouteChildren {
   SlowSpansRoute: typeof SlowSpansRoute
   TopMoversRoute: typeof TopMoversRoute
   TopologyRoute: typeof TopologyRoute
+  TraceCompareRoute: typeof TraceCompareRoute
   TracesRoute: typeof TracesRoute
   ServicesNameRoute: typeof ServicesNameRoute
 }
@@ -388,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/traces'
       fullPath: '/traces'
       preLoaderRoute: typeof TracesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trace-compare': {
+      id: '/trace-compare'
+      path: '/trace-compare'
+      fullPath: '/trace-compare'
+      preLoaderRoute: typeof TraceCompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/topology': {
@@ -544,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cardinality': {
+      id: '/cardinality'
+      path: '/cardinality'
+      fullPath: '/cardinality'
+      preLoaderRoute: typeof CardinalityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/alerts': {
       id: '/alerts'
       path: '/alerts'
@@ -579,6 +619,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiopsRoute: AiopsRoute,
   AlertsRoute: AlertsRoute,
+  CardinalityRoute: CardinalityRoute,
   CatalogRoute: CatalogRoute,
   CausalityRoute: CausalityRoute,
   CompareRoute: CompareRoute,
@@ -601,6 +642,7 @@ const rootRouteChildren: RootRouteChildren = {
   SlowSpansRoute: SlowSpansRoute,
   TopMoversRoute: TopMoversRoute,
   TopologyRoute: TopologyRoute,
+  TraceCompareRoute: TraceCompareRoute,
   TracesRoute: TracesRoute,
   ServicesNameRoute: ServicesNameRoute,
 }
