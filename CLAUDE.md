@@ -31,6 +31,8 @@ ClickHouse 데이터를 보여주는 대시보드. **Go API 서버 + Vite/TypeSc
 
 > 코딩 컨벤션, 설계 의도, 주의사항을 여기에 적어두세요.
 > PR로 코드가 바뀌면 이 서술형 영역은 GitHub Actions(Claude)가 자동으로 보강합니다.
+> 사람이 읽기 쉬운 상세 온보딩 문서는 `docs/ARCHITECTURE.md`에 별도로 자동 생성/갱신됩니다
+> (이 문서는 AI 에이전트용 간결 문서, `docs/ARCHITECTURE.md`는 사람용 상세 문서).
 
 <!-- AUTO-GENERATED:start (스크립트가 관리. 직접 수정 금지) -->
 
