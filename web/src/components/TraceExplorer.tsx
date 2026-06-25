@@ -75,6 +75,20 @@ function WaterfallRow({
         className="flex-shrink-0 overflow-hidden"
         style={{ width: 280, paddingLeft: depth * 16 }}
       >
+        {span.on_critical_path && (
+          <span
+            title="On critical path"
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--warning, #f59e0b)',
+              marginRight: 5,
+              verticalAlign: 'middle',
+            }}
+          />
+        )}
         <span style={{ color: 'var(--muted)', fontSize: 10 }}>{span.service_name} </span>
         <span
           className="font-medium"
@@ -95,7 +109,8 @@ function WaterfallRow({
             width: `${Math.max(widthPct, 0.3).toFixed(2)}%`,
             height: 8,
             background: barColor,
-            opacity: 0.85,
+            opacity: span.on_critical_path ? 1 : 0.85,
+            boxShadow: span.on_critical_path ? '0 0 0 1px var(--warning, #f59e0b)' : 'none',
           }}
         />
       </div>
@@ -148,6 +163,19 @@ function SpanDetail({ span, onClose }: { span: TraceSpan; onClose: () => void })
         <span style={{ color: 'var(--text)' }}>{new Date(span.start_time).toISOString()}</span>
         <span style={{ color: 'var(--muted)' }}>Duration</span>
         <span style={{ color: 'var(--text)' }}>{fmtDuration(span.duration_ms)}</span>
+        <span style={{ color: 'var(--muted)' }}>Self Time</span>
+        <span style={{ color: 'var(--text)' }}>
+          {fmtDuration(span.self_ms)}
+          {span.duration_ms > 0 && (
+            <span style={{ color: 'var(--muted)', marginLeft: 6 }}>
+              ({((span.self_ms / span.duration_ms) * 100).toFixed(0)}% of total)
+            </span>
+          )}
+        </span>
+        <span style={{ color: 'var(--muted)' }}>Critical Path</span>
+        <span style={{ color: span.on_critical_path ? 'var(--warning, #f59e0b)' : 'var(--muted)' }}>
+          {span.on_critical_path ? 'Yes — on dominant path' : 'No'}
+        </span>
         <span style={{ color: 'var(--muted)' }}>Status</span>
         <span style={{ color: statusColor(span.status_code) }}>{statusLabel(span.status_code)}</span>
         {span.http_method && (

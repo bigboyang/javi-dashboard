@@ -138,7 +138,9 @@ func GetAlertStatus(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), queryTimeout)
 	defer cancel()
 
-	services, err := repository.ListServices(ctx, dur)
+	// Alert evaluation only reads RED metrics; Apdex is irrelevant here, so use
+	// the default threshold to satisfy the shared ListServices signature.
+	services, err := repository.ListServices(ctx, dur, defaultApdexThresholdMs)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to query services")
 		return

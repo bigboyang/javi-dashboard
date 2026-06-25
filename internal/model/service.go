@@ -63,6 +63,10 @@ type ServiceSummary struct {
 	P99Ms         float64 `json:"p99_ms"`
 	TotalRequests uint64  `json:"total_requests"`
 	ErrorCount    uint64  `json:"error_count"`
+	// Apdex is the Application Performance Index in [0,1], computed against the
+	// per-request ApdexThresholdMs: (satisfied + tolerating/2) / total.
+	// satisfied = duration ≤ T, tolerating = T < duration ≤ 4T, frustrated = > 4T.
+	Apdex float64 `json:"apdex"`
 }
 
 // ServicesResponse is the top-level envelope for GET /api/v1/services.
@@ -70,6 +74,35 @@ type ServicesResponse struct {
 	Services    []ServiceSummary `json:"services"`
 	Window      string           `json:"window"`
 	GeneratedAt time.Time        `json:"generated_at"`
+	// ApdexThresholdMs is the target response time T (milliseconds) used to
+	// compute the per-service Apdex score in this response.
+	ApdexThresholdMs float64 `json:"apdex_threshold_ms"`
+}
+
+// TopMover compares a service's RED metrics between the current window and the
+// immediately preceding window of equal length, surfacing how much it changed.
+// Positive deltas mean the metric got worse (higher latency/error rate).
+type TopMover struct {
+	Name           string  `json:"name"`
+	CurP95Ms       float64 `json:"cur_p95_ms"`
+	PrevP95Ms      float64 `json:"prev_p95_ms"`
+	P95DeltaMs     float64 `json:"p95_delta_ms"`
+	P95DeltaPct    float64 `json:"p95_delta_pct"` // relative change vs previous, fraction
+	CurErrorRate   float64 `json:"cur_error_rate"`
+	PrevErrorRate  float64 `json:"prev_error_rate"`
+	ErrorRateDelta float64 `json:"error_rate_delta"`
+	CurRate        float64 `json:"cur_rate"` // req/min in current window
+	PrevRate       float64 `json:"prev_rate"`
+	CurRequests    uint64  `json:"cur_requests"`
+	PrevRequests   uint64  `json:"prev_requests"`
+}
+
+// TopMoversResponse is the top-level envelope for GET /api/v1/top-movers.
+type TopMoversResponse struct {
+	Movers      []TopMover `json:"movers"`
+	Window      string     `json:"window"`
+	SortBy      string     `json:"sort_by"`
+	GeneratedAt time.Time  `json:"generated_at"`
 }
 
 // REDPoint holds RED metrics for a single time bucket in a time-series response.
@@ -141,6 +174,15 @@ type TraceSpan struct {
 	Name           string            `json:"name"`
 	StartTime      time.Time         `json:"start_time"`
 	DurationMs     float64           `json:"duration_ms"`
+	// SelfMs is the span's exclusive (self) time: its duration minus the summed
+	// duration of its direct children. It answers "how much time was spent in
+	// this span itself vs. in callees". Clamped at 0 because parallel children
+	// can sum past the parent's wall-clock duration.
+	SelfMs         float64           `json:"self_ms"`
+	// OnCriticalPath marks spans on the trace's dominant path: starting at the
+	// root, at each level we follow the child that finishes last (the one gating
+	// when its parent's subtree completes). These are the spans to optimize first.
+	OnCriticalPath bool              `json:"on_critical_path"`
 	StatusCode     uint8             `json:"status_code"`
 	HttpMethod     string            `json:"http_method"`
 	HttpStatusCode uint16            `json:"http_status_code"`
@@ -202,6 +244,61 @@ type TopologyResponse struct {
 	Nodes  []TopologyNode `json:"nodes"`
 	Edges  []TopologyEdge `json:"edges"`
 	Window string         `json:"window"`
+}
+
+// OutlierItem is one entity (operation / instance / pod) scored against its
+// peers. ZScore = (Value - Baseline) / stddev of the peer set; higher means a
+// stronger outlier. Baseline is the peer mean. Secondary/ErrorRate carry an
+// extra dimension whose meaning depends on the outlier Type.
+type OutlierItem struct {
+	Label     string  `json:"label"`
+	Service   string  `json:"service"`
+	Value     float64 `json:"value"`
+	Baseline  float64 `json:"baseline"`
+	ZScore    float64 `json:"z_score"`
+	Count     uint64  `json:"count"`
+	ErrorRate float64 `json:"error_rate"`
+	Secondary float64 `json:"secondary"`
+}
+
+// OutliersResponse is the envelope for the GET /api/v1/outliers/* endpoints.
+// Metric/SecondaryMetric label what Value and Secondary mean for this Type so
+// the frontend can render generic columns.
+type OutliersResponse struct {
+	Type            string        `json:"type"`
+	Metric          string        `json:"metric"`
+	SecondaryMetric string        `json:"secondary_metric"`
+	Window          string        `json:"window"`
+	Service         string        `json:"service"`
+	Items           []OutlierItem `json:"items"`
+	GeneratedAt     time.Time     `json:"generated_at"`
+}
+
+// HeatmapBucket defines one latency band on the heatmap's Y axis. Bands are
+// log2-scaled: band Index covers [2^Index, 2^(Index+1)) milliseconds.
+type HeatmapBucket struct {
+	Index  int     `json:"index"`
+	LowMs  float64 `json:"low_ms"`
+	HighMs float64 `json:"high_ms"`
+}
+
+// HeatmapCell is one (time-column, latency-band) tile with its span count.
+type HeatmapCell struct {
+	TsMs   int64  `json:"ts_ms"`
+	Bucket int    `json:"bucket"`
+	Count  uint64 `json:"count"`
+}
+
+// LatencyHeatmapResponse is the top-level envelope for GET /api/v1/metrics/latency-heatmap.
+// Columns is the time axis (one entry per step bucket); Buckets is the latency axis.
+type LatencyHeatmapResponse struct {
+	Service  string          `json:"service"`
+	Window   string          `json:"window"`
+	Step     string          `json:"step"`
+	Columns  []int64         `json:"columns"` // epoch ms, ascending
+	Buckets  []HeatmapBucket `json:"buckets"`
+	Cells    []HeatmapCell   `json:"cells"`
+	MaxCount uint64          `json:"max_count"`
 }
 
 // MetricName carries a summary of a single metric instrument within a window.

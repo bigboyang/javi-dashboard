@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee, Search, Share2, GitCompare, LayoutDashboard, Bug, Server, Target, Zap, Flame, BookOpen, Rocket, Database, Radio } from 'lucide-react'
+import { Activity, GitBranch, ScrollText, Network, BarChart2, Bell, TrendingUp, Cpu, Coffee, Search, Share2, GitCompare, LayoutDashboard, Bug, Server, Target, Zap, Flame, BookOpen, Rocket, Database, Radio, ArrowUpDown, Grid3x3, ScatterChart } from 'lucide-react'
 
 interface NavItem {
   icon: ReactNode
@@ -17,11 +17,14 @@ export function AppShell({ children }: AppShellProps) {
 
   const navItems: NavItem[] = [
     { icon: <Activity size={16} />, label: 'Overview', to: '/' },
+    { icon: <ArrowUpDown size={16} />, label: 'Top Movers', to: '/top-movers' },
+    { icon: <ScatterChart size={16} />, label: 'Outliers', to: '/outliers' },
     { icon: <Radio size={16} />, label: 'Live', to: '/live' },
     { icon: <GitBranch size={16} />, label: 'Traces', to: '/traces' },
     { icon: <ScrollText size={16} />, label: 'Logs', to: '/logs' },
     { icon: <Network size={16} />, label: 'Topology', to: '/topology' },
     { icon: <BarChart2 size={16} />, label: 'Metrics', to: '/metrics' },
+    { icon: <Grid3x3 size={16} />, label: 'Latency Heatmap', to: '/latency-heatmap' },
     { icon: <Bell size={16} />, label: 'Alerts', to: '/alerts' },
     { icon: <TrendingUp size={16} />, label: 'Forecast', to: '/forecast' },
     { icon: <Cpu size={16} />, label: 'AIOps', to: '/aiops' },

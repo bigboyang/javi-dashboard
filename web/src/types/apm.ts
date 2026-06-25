@@ -7,12 +7,14 @@ export interface ServiceSummary {
   p99_ms: number
   total_requests: number
   error_count: number
+  apdex: number       // 0.0-1.0 (satisfied + tolerating/2) / total
 }
 
 export interface ServicesResponse {
   services: ServiceSummary[]
   window: string
   generated_at: string
+  apdex_threshold_ms: number  // target response time T used for Apdex
 }
 
 export interface RedPoint {
@@ -60,6 +62,8 @@ export interface TraceSpan {
   name: string
   start_time: string
   duration_ms: number
+  self_ms: number   // exclusive time: duration minus summed children durations
+  on_critical_path: boolean  // span lies on the trace's dominant (latest-finishing) path
   status_code: number
   http_method: string
   http_status_code: number

@@ -6,6 +6,7 @@ export interface ErrorGroup {
   total_count: number
   first_seen_ms: number
   last_seen_ms: number
+  is_new: boolean  // first appeared within the selected window
 }
 
 export interface ErrorGroupsResponse {

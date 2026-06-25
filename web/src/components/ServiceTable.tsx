@@ -28,6 +28,13 @@ function latencyColor(ms: number): string {
   return 'var(--error)'
 }
 
+// Apdex bands: ≥0.94 excellent, ≥0.85 good (green); ≥0.70 fair (amber); <0.70 poor (red).
+function apdexColor(a: number): string {
+  if (a >= 0.85) return 'var(--success)'
+  if (a >= 0.7) return 'var(--warning)'
+  return 'var(--error)'
+}
+
 function errorRateDotColor(rate: number): string {
   if (rate < 0.01) return 'var(--success)'
   if (rate < 0.05) return 'var(--warning)'
@@ -48,6 +55,10 @@ function fmtMs(n: number): string {
   return n.toFixed(1)
 }
 
+function fmtApdex(n: number): string {
+  return n.toFixed(2)
+}
+
 function fmtRequests(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k'
@@ -59,7 +70,7 @@ function fmtRequests(n: number): string {
 function SkeletonRow() {
   return (
     <tr>
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: 8 }).map((_, i) => (
         <td key={i} className="px-3 py-2.5">
           <div
             className="h-3 rounded animate-pulse"
@@ -178,6 +189,11 @@ function ServiceRow({ service, selected, onClick }: ServiceRowProps) {
         </span>
       </Td>
 
+      {/* Apdex */}
+      <Td right>
+        <span style={{ color: apdexColor(service.apdex) }}>{fmtApdex(service.apdex)}</span>
+      </Td>
+
       {/* P50 */}
       <Td right>
         <span style={{ color: latencyColor(service.p50_ms) }}>{fmtMs(service.p50_ms)}</span>
@@ -282,6 +298,7 @@ export function ServiceTable({
               <Th>Service</Th>
               <Th right>Rate</Th>
               <Th right>Error %</Th>
+              <Th right>Apdex</Th>
               <Th right>P50</Th>
               <Th right>P95</Th>
               <Th right>P99</Th>
@@ -295,7 +312,7 @@ export function ServiceTable({
             {isError && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-sm"
                   style={{ color: 'var(--error)' }}
                 >
@@ -307,7 +324,7 @@ export function ServiceTable({
             {!isLoading && !isError && data?.services.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-sm"
                   style={{ color: 'var(--muted)' }}
                 >
